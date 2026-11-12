@@ -1,0 +1,15 @@
+---
+trigger: glob
+globs: **/*.ts,**/*.tsx
+description: React and TypeScript conventions for Feature-Sliced slices.
+---
+
+# Frontend (React / TSX)
+
+- One component per `.tsx` file. The file name is the component in kebab-case: `TaskList` -> `task-list.tsx`. A component with partials lives in `ui/<component>/<component>.tsx` and `partials/`.
+- `ui` is markup and wiring. No `useEffect`, `useQuery`, `fetch`, or `axios` in `ui`. Effects and server state go in `model`. Network calls go in `api`.
+- `api`, `lib`, and `config` do not import React.
+- Import another slice only from its `index.ts`. Import shared code from `shared/<segment>`, not from a file inside that segment.
+- Imports go at the top of the file. No inline or dynamic imports without a documented reason.
+- Do not add a dependency for something a few lines of code can do.
+- Formatting follows the project formatter. Its command is in `10-project-context`.

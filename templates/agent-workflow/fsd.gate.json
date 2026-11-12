@@ -1,0 +1,9 @@
+{
+  "src": "src",
+  "maxFiles": 80,
+  "maxLines": 4000,
+  "maxFileLines": 200,
+  "ignore": [],
+  "steiger": false,
+  "extra": []
+}

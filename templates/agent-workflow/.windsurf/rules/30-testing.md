@@ -1,0 +1,18 @@
+---
+trigger: always_on
+description: Where tests and stories go, and how to verify changes in this repo.
+---
+
+# Testing and verification
+
+## Tests and stories
+
+- Tests and stories sit next to the file they cover: `ui/task-list/task-list.test.tsx`, `ui/task-list/task-list.stories.tsx`.
+- If the repo has no test runner (see `10-project-context`), do not invent one or add test files unless asked.
+
+## Verify every change
+
+- Gate: `node .agents/skills/feature-sliced-design/scripts/gate.mjs` exits 0. The reply names the command and its result.
+- Lint and type-check: 0 errors when `10-project-context` lists those commands.
+- UI changes: exercise the changed flow in the browser against the dev server. Reuse a running server.
+- Do not report unverified work as done.
