@@ -6,10 +6,8 @@ This is the sliced sibling of [agent-skills](https://github.com/effinrich/agent-
 
 ## Install the skill (global, so agents can read it)
 
-From this folder, before the repo is on GitHub:
-
 ```
-npx skills add D:\documents-from-c\GitHub\agent-skills-fsd --skill feature-sliced-design -g -a cursor -a claude-code -a codex -a windsurf -y
+npx skills add effinrich/agent-skills-fsd --skill feature-sliced-design -g -a cursor -a claude-code -a codex -a windsurf -y
 ```
 
 That installs to `~/.agents/skills/feature-sliced-design/`.
