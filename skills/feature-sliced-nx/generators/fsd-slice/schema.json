@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "FsdSlice",
+  "title": "Generate an FSD Slice Library",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Slice name in kebab-case (product-card).",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "What is the name of the FSD slice?"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Business domain in kebab-case (catalog, account, shared).",
+      "x-prompt": "Which business domain does this slice belong to?"
+    },
+    "layer": {
+      "type": "string",
+      "description": "FSD architectural layer. The app is an Nx application, not a slice.",
+      "enum": ["shared", "entities", "features", "widgets", "pages"],
+      "x-prompt": {
+        "message": "Which FSD layer should this slice live in?",
+        "type": "list",
+        "items": [
+          { "value": "shared", "label": "shared" },
+          { "value": "entities", "label": "entities" },
+          { "value": "features", "label": "features" },
+          { "value": "widgets", "label": "widgets" },
+          { "value": "pages", "label": "pages" }
+        ]
+      }
+    },
+    "storybook": {
+      "type": "boolean",
+      "description": "Add a per-slice Storybook target and CSF3 stories. Does not create a workspace host.",
+      "default": false
+    },
+    "unitTestRunner": {
+      "type": "string",
+      "description": "Match the runner this workspace already uses.",
+      "enum": ["vitest", "jest", "none"],
+      "default": "vitest"
+    }
+  },
+  "required": ["name", "domain", "layer"]
+}

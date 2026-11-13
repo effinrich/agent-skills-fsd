@@ -6,15 +6,23 @@ This is the sliced sibling of [agent-skills](https://github.com/effinrich/agent-
 
 ## Install the skill (global, so agents can read it)
 
+Agnostic, one `src/` tree:
+
 ```
 npx skills add effinrich/agent-skills-fsd --skill feature-sliced-design -g -a cursor -a claude-code -a codex -a windsurf -y
 ```
 
-That installs to `~/.agents/skills/feature-sliced-design/`.
+Nx workspace, one library per slice:
+
+```
+npx skills add effinrich/agent-skills-fsd --skill feature-sliced-nx -g -a cursor -a claude-code -a codex -a windsurf -y
+```
+
+Those install to `~/.agents/skills/feature-sliced-design/` and `~/.agents/skills/feature-sliced-nx/`. Use the agnostic skill when the repo has no `nx.json`. Use the Nx skill when it does.
 
 ## Adopt it in a project
 
-The gate can only run files that live in the project. Copy the skill in, then copy the workflow template.
+The agnostic gate can only run files that live in the project. Copy the skill in, then copy the workflow template. For an Nx workspace, follow `skills/feature-sliced-nx/SKILL.md` instead of the steps below.
 
 1. Copy `skills/feature-sliced-design` to `<project>/.agents/skills/feature-sliced-design`.
 2. Copy the contents of `templates/agent-workflow/` into the project root. If `.cursor/hooks.json` or `.claude/settings.json` already exists, merge the hook entries instead of replacing the file.
@@ -28,7 +36,8 @@ The gate can only run files that live in the project. Copy the skill in, then co
 ## Layout
 
 ```
-skills/feature-sliced-design/     SKILL.md, REFERENCE.md, scripts/
+skills/feature-sliced-design/     Agnostic src/ layout, gate, hooks
+skills/feature-sliced-nx/         Nx library-per-slice, tags, Storybook
 templates/agent-workflow/         AGENTS.md, rules, hooks, fsd.gate.json, CI
 ```
 

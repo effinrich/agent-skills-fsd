@@ -1,6 +1,6 @@
 ---
 name: feature-sliced-design
-description: Feature-Sliced Design layers (app, pages, widgets, features, entities, shared), slice public APIs, and downward imports, plus the gate, stop hook, and shell guard that enforce them. Use when creating or moving a slice, choosing a layer, wiring imports, scaffolding a React app, migrating a feature-folder app, or setting up agent guardrails so the work stays on path.
+description: Agnostic Feature-Sliced Design for a single React app (src/app, pages, widgets, features, entities, shared), slice public APIs, downward imports, and the gate that enforces them. Use when the repo has no nx.json. For an Nx workspace, use the feature-sliced-nx skill instead.
 ---
 
 # Feature-Sliced Design
@@ -8,6 +8,8 @@ description: Feature-Sliced Design layers (app, pages, widgets, features, entiti
 Structure UI as layers and slices, and make the gate fail when an agent leaves that structure. Methodology: [Feature-Sliced Design](https://feature-sliced.design/). This skill is an opinionated subset: a closed list of layers and segments, so an agent cannot invent a seventh folder and call it architecture.
 
 The gate checks structure. It does not decide whether a slice is "really" a feature. That choice is below. Steiger, the official linter, is optional and off until `fsd.gate.json` sets `"steiger": true`.
+
+This skill is for one app with a single `src/` tree. An Nx workspace (`nx.json` at the root) uses the `feature-sliced-nx` skill: each slice is a library, and `@nx/enforce-module-boundaries` is the gate. Do not run this skill's `validate.mjs` on `libs/`.
 
 ## Layers
 
