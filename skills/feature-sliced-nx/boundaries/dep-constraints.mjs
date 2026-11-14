@@ -42,4 +42,11 @@ export const fsdLayerConstraints = [
 
 // Add one of these per business domain. `shared` is the only domain other domains may import.
 // { sourceTag: 'fsd:domain:catalog', onlyDependOnLibsWithTags: ['fsd:domain:catalog', 'fsd:domain:shared'] }
+// { sourceTag: 'fsd:domain:account', onlyDependOnLibsWithTags: ['fsd:domain:account', 'fsd:domain:shared'] }
 // { sourceTag: 'fsd:domain:shared', onlyDependOnLibsWithTags: ['fsd:domain:shared'] }
+//
+// Migrating an existing monorepo: tag untouched projects legacy-code, then add:
+// { sourceTag: 'legacy-code', onlyDependOnLibsWithTags: ['legacy-code', 'fsd:layer:shared', 'fsd:layer:entities'] }
+//
+// Shared kernel (types/DTOs only) is still fsd:layer:shared + fsd:domain:shared under
+// libs/shared/shared/kernel. Do not let domains import each other through it with behavior.

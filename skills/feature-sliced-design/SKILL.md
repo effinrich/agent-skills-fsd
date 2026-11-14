@@ -1,6 +1,6 @@
 ---
 name: feature-sliced-design
-description: Agnostic Feature-Sliced Design for a single React app (src/app, pages, widgets, features, entities, shared), slice public APIs, downward imports, and the gate that enforces them. Use when the repo has no nx.json. For an Nx workspace, use the feature-sliced-nx skill instead.
+description: Agnostic Feature-Sliced Design for a single React app (src/app, pages, features, entities, shared; widgets discouraged), pages-first placement, slice public APIs, downward imports, and the gate that enforces them. Use when the repo has no nx.json and the task creates a slice, decides where code belongs, splits a component, or moves an existing React app onto these layers. For an Nx workspace, use the feature-sliced-nx skill instead.
 ---
 
 # Feature-Sliced Design
@@ -17,12 +17,16 @@ Imports go downward only. A file may import a layer strictly below its own.
 
 | Layer | Holds | Sliced? |
 | --- | --- | --- |
-| `app` | Providers, entry, router wiring, global styles | No. Segments, plus `providers`, `styles`, `routes`, `store`. |
-| `pages` | Route-level screens. One slice composes the page. | Yes |
-| `widgets` | Blocks reused across pages (header, sidebar, feed). | Yes |
-| `features` | One user action that has business value (sign-in, add-to-cart). | Yes |
-| `entities` | Business nouns (user, song, order) and their types. | Yes |
-| `shared` | UI kit, clients, helpers. No business meaning. | No. Segments only. |
+| `app` | Providers, entry, router wiring, app-wide layouts, global styles | No. Segments, plus `providers`, `styles`, `routes`, `store`. |
+| `pages` | Route-level screens. Own their logic until extraction is earned. | Yes |
+| `widgets` | Large reusable UI blocks. Discouraged — see below. | Yes |
+| `features` | A reusable user action with its own reason to change. | Yes |
+| `entities` | A reusable business domain model with its own reason to change. | Yes |
+| `shared` | Infrastructure with no business rules (UI kit, utils, API client, auth tokens). | No. Segments only. |
+
+Not every layer is required. Most work starts in `app/`, `pages/`, and `shared/`. Add `features/` or `entities/` only when the [extraction rule](#extraction-rule) holds. Do not create empty layer folders.
+
+`widgets/` is allowed by the gate but discouraged for new work. Headers, sidebars, and feeds often mix markup with fetching and actions, so the Features / Widgets line blurs. Prefer: app-wide shell in `app/`, one-page composition in that page, a reused action in `features/`, context-free UI in `shared/ui`. Open a widget only when the block is a true shared composition that is not an action, not domain UI, and not generic kit. An existing widgets tree stays valid; do not delete it to satisfy this note.
 
 There is no `processes` layer. There is no `src/components`, `src/hooks`, or `src/services`.
 
@@ -40,7 +44,7 @@ src/features/auth/
   config/auth.ts           Flags and fixed values.
 ```
 
-Create a segment only when it has code. Pages and widgets are often `ui` plus `index.ts`. Features add `model`. Entities are often `model` only.
+Create a segment only when it has code. Pages are often `ui` plus `index.ts` (and `api` when the page owns a request). Features add `model`. Entities are often `model` only.
 
 `index.ts` re-exports what other layers may use. It does not define a component. Do not add `pages/index.ts` or any other layer barrel.
 
@@ -49,15 +53,23 @@ Route groups `(name)` and dynamic segments `[param]` are transparent when they o
 ## Public API and cross-imports
 
 - Outside a slice, import `features/auth` or `features/auth/index`, never `features/auth/ui/auth/auth`.
-- Outside `shared`, import `shared/ui` or `shared/ui/index`, never `shared/ui/button/button`. The same rule applies to `app` segments.
-- Slices on the same layer do not import each other. A page does not import another page; lift the shared block into a widget.
-- Entities may cross-import through `@x`. `entities/user/@x/song.ts` is a public API that only `entities/song` may import:
+- Outside `shared`, import `shared/ui` or `shared/ui/index`, never `shared/ui/button/button`. The same rule applies to `app` segments. A per-component `shared/ui/button/index.ts` is fine for tree-shaking; the deep file still is not.
+- Slices on the same layer do not import each other. A page does not import another page.
+
+Same-layer need (features or widgets), try in order:
+
+1. Merge the slices when they are really one responsibility.
+2. Move the shared piece into an entity or into `shared` when it is infrastructure.
+3. Compose both from a page or from `app` (upper layer imports both).
+4. Last resort: import only through the other slice's public API, never its internals. Document why in the importer.
+
+Entities may cross-import through `@x`. `entities/user/@x/song.ts` is a public API that only `entities/song` may import:
 
 ```ts
 import type { User } from "entities/user/@x/song"
 ```
 
-Keep `@x` on entities only, and keep the list short.
+`@x` is entities-only and a last resort after a boundary merge. Features and widgets use the four strategies above, not `@x`.
 
 ## Where code goes
 
@@ -74,47 +86,99 @@ Keep `@x` on entities only, and keep the list short.
 - One component per file. `TaskList` is `task-list.tsx`, and that file exports `TaskList`.
 - A component with partials uses a like-named folder: `ui/task-list/task-list.tsx` and `ui/task-list/partials/`.
 - A single component with no partials may be a flat `ui/task-list.tsx`.
+- `ui` is markup plus wiring only. Types, hooks, consts, and helpers leave the component file for their segments.
 - No `useEffect`, `useQuery`, `useMutation`, `fetch`, or `axios` in `ui`.
 - No `.ts` modules in `ui` except `index.ts` and tests. Hooks and types go to `model`.
+
+Segment files are role- or concept-named (`types.ts`, `hooks.ts`, `auth.ts`), never prefixed with the slice or component (`task-list.types.ts`, `focus.consts.ts`). Name a page or slice after the route or capability (`pages/focus` + `ui/focus.tsx`), not a UI variant (`focus-radar-modal`).
 
 `api`, `lib`, and `config` do not import React. File and folder names are kebab-case. Files stay at or under `maxFileLines` in `fsd.gate.json` (starter 200). Tests and stories sit next to the file they cover and are exempt from the line cap.
 
 Aliases the gate understands: relative imports, `@/`, `~/`, bare layer paths (`features/auth`), and `paths` in `tsconfig.json` or `tsconfig.app.json`.
 
+## Extraction rule
+
+Place code in the page first. Duplication across pages is allowed. Extract only when all three hold:
+
+1. The same code is used in multiple places right now, not hypothetically.
+2. It has a reason to change that is independent of any one consumer.
+3. The boundary has a focused responsibility.
+
+When in doubt, keep it in `pages/`.
+
 ## Choosing a layer
 
-- The user opens it from a route: `pages`.
-- Several pages render the same block: `widgets`.
-- The user does something (submit, toggle, pay): `features`.
-- It is a noun the product stores or displays: `entities`.
-- It would still exist in a different product: `shared`.
-- It runs once for the whole app (provider, router, global CSS): `app`.
+1. Used by only one page → stay in that page (UI, request, and state).
+2. Used in several pages but the copies may drift → separate page-local copies are valid.
+3. Reusable infrastructure with no product rule (UI kit, util, API client, auth token, plain CRUD once shared) → `shared/`. Business-themed presentation and generic UI interaction may live in `shared/ui`.
+4. A complete user action that several consumers share, with its own reason to change → `features/`. A single-use coupon form stays on the checkout page.
+5. A business domain model that several consumers share, with its own reason to change → `entities/`. A DTO several pages read is often still `shared/api` until a rule must agree with itself.
+6. App-wide providers, router, theme, or shell layout → `app/`.
+7. A true shared UI composition that is none of the above → `widgets/` (rare; ask before opening the layer).
 
-When a piece is used by one page only, keep it in that page until a second page needs it. Move it then, not before.
+| Scenario | Single use | Extraction rule holds |
+| --- | --- | --- |
+| Profile form | `pages/profile/ui/` | `features/profile-form/` |
+| Product card (same responsibility) | `pages/home/ui/` | `entities/product/ui/` when the entity owns it |
+| Product cards that look alike but diverge | Keep each in its page | Do not extract on the name alone |
+| API request | `pages/<page>/api/` | `shared/api/` when plain and shared; entity `api/` only when that entity owns the domain |
+| Auth token / session helpers | `shared/auth/` or `shared/api/` | Same. Do not invent a user entity to hold the token |
+| Login form | `pages/login/ui/` | `features/auth/` |
+| App header | — | Compose in `app/`, not a new widget by default |
+
+### Request and auth placement
+
+- One consumer → that consumer's `api/` (usually the page).
+- Several consumers, plain resource access / CRUD, no domain rule → `shared/api/`.
+- An established entity owns the domain responsibility → that entity's `api/`.
+- Access and refresh tokens default to `shared/auth` (or `shared/api`). An existing `entities/user` does not automatically own them.
 
 ## New project
 
 1. App entry and providers go in `src/app/`. `src/main.tsx` may stay at the `src` root and render `app`.
-2. Scaffold a slice: `node .agents/skills/feature-sliced-design/scripts/scaffold.mjs <layer> <slice> [segment...]`. Defaults: pages and widgets get `ui`; features get `ui` and `model`; entities get `model`. Delete stub files the slice does not use.
+2. Scaffold a slice: `node .agents/skills/feature-sliced-design/scripts/scaffold.mjs <layer> <slice> [segment...]`. Defaults: pages get `ui`; features get `ui` and `model`; entities get `model`. Prefer pages and features over widgets. Delete stub files the slice does not use.
 3. Copy `templates/agent-workflow/` from this skill's repo into the project and fill in the placeholders. Vendor this skill at `.agents/skills/feature-sliced-design` so the gate and the hooks resolve.
 4. Set the budget in `fsd.gate.json` before the tree grows past it.
 
-## Migrating a feature-folder app
+## Splitting a large component
+
+Move code as-is. Renames and logic rewrites belong in a separate change.
+
+1. The file is not in a slice yet? Put it in the layer from [Choosing a layer](#choosing-a-layer). A screen goes to `pages/<screen>/ui/`. A user action goes to `features/<action>/ui/`.
+2. Types and hooks -> `model/`.
+3. Constants -> `config/`.
+4. Pure helpers -> `lib/`.
+5. `fetch` / `axios` -> `api/`.
+6. Each commented JSX section -> `ui/<component>/partials/<part>.tsx`.
+7. Add `index.ts` that re-exports what other layers may import. Update importers to that public path.
+8. Run the gate. Name the command and the result.
+
+## Refactoring an existing app
+
+Migrate the file you touch. Everything else stays.
+
+1. Touching a file that breaks these rules? Split it with the steps above, and update its importers.
+2. Untouched files keep their location. Report them. Do not fix them in this change.
+3. Finish one slice before starting the next. Moves across many slices need the user's go-ahead.
+4. Run the gate. A violation in a file you did not touch is a report, not a drive-by fix.
+5. Folders that are not moved yet go in `fsd.gate.json` `ignore`. Do not ignore code you just wrote. Do not raise `maxFiles`, `maxLines`, or `maxFileLines` to clear a failure. Ask the user.
+
+### From a feature-folder app
 
 The feature-based-architecture skill uses `src/features/<feature>/<component>/{types,consts,hooks,utils,api}.ts`. Map those files as you touch them:
 
 | Feature folder | Feature-Sliced |
 | --- | --- |
-| Screen component | `pages/<screen>/ui/` or `widgets/<block>/ui/` |
-| User action | `features/<action>/` |
+| Screen component | `pages/<screen>/ui/` (keep page-local until the extraction rule holds) |
+| User action used in one place | Stay in that page |
+| User action shared with its own reason to change | `features/<action>/` |
+| App-wide header / shell | `app/` composition |
 | `types.ts`, `hooks.ts` | `model/` |
 | `consts.ts` | `config/` or `model/` |
 | `utils.ts` | `lib/` |
-| `api.ts` | `api/` |
+| `api.ts` | page `api/` first; `shared/api/` when plain and shared |
 | `partials/` | `ui/<component>/partials/` |
 | `src/shared/ui` | `shared/ui` |
-
-Move one slice at a time. Put folders that are not moved yet in `fsd.gate.json` `ignore`. Do not add an ignore entry for code you just wrote. Do not raise `maxFiles`, `maxLines`, or `maxFileLines` to clear a failure. Ask the user.
 
 ## Harness
 

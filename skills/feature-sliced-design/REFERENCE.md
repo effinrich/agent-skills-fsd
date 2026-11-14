@@ -25,7 +25,8 @@ Edges and decisions behind the skill. The gate implements the checks named here.
 
 ## What the gate does not decide
 
-- Whether `auth` should be a feature or a widget. The layer tables in the skill are the guide. Steiger's `insignificant-slice` and `excessive-slicing` rules comment on granularity; they are off by default so the first use of an entity does not fail the gate.
+- Whether code has earned a feature or entity. Use the skill's extraction rule and placement table. Steiger's `insignificant-slice` and `excessive-slicing` rules comment on granularity; they are off by default so the first use of an entity does not fail the gate.
+- Whether a widget is a "true" widget. The gate still allows the `widgets` layer; the skill discourages opening it for headers and feeds that belong in `app`, a page, a feature, or `shared/ui`.
 - Whether a business rule is correct.
 - Lint, types, and tests, until those commands are listed in `extra`.
 
@@ -58,13 +59,14 @@ A folder named `[id]` that contains `index.ts` is a slice, not a group.
 
 ## From the feature-folder skill
 
-`feature-based-architecture` colocates `types.ts`, `consts.ts`, `hooks.ts`, `utils.ts`, and `api.ts` beside a component. Here those roles are segments, and screens are not automatically features.
+`feature-based-architecture` colocates `types.ts`, `consts.ts`, `hooks.ts`, `utils.ts`, and `api.ts` beside a component. Here those roles are segments (`model`, `config`, `lib`, `api`), and screens are not automatically features. Keep the same readability rules: `ui` stays markup plus wiring; segment files stay unprefixed (`types.ts`, not `task-list.types.ts`); name a page or slice after the route or capability (`pages/focus`), not a UI variant (`focus-radar-modal`).
 
 A component folder that was `src/features/tasks/task-list/` becomes one of:
 
-- `src/pages/task-list/` when it is a route
-- `src/widgets/task-list/` when several pages embed it
-- `src/features/filter-tasks/` when the behaviour is the action and the list view is a page or widget that calls it
+- `src/pages/task-list/` when it is a route (default; keep page-local until the extraction rule holds)
+- `src/features/filter-tasks/` when the behaviour is a reused action with its own reason to change
+- `src/app/` composition when it is the app shell
+- `src/widgets/task-list/` only when it is a true shared UI composition that is none of the above
 
 Move the file you are changing. Leave the rest on `ignore` until it is that file's turn.
 

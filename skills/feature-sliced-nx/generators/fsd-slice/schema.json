@@ -20,17 +20,17 @@
     },
     "layer": {
       "type": "string",
-      "description": "FSD architectural layer. The app is an Nx application, not a slice.",
+      "description": "FSD layer. Prefer pages, features, entities, shared. widgets is discouraged unless this is a true shared UI composition. The app is an Nx application, not a slice.",
       "enum": ["shared", "entities", "features", "widgets", "pages"],
       "x-prompt": {
-        "message": "Which FSD layer should this slice live in?",
+        "message": "Which FSD layer? Prefer pages/features/entities/shared; widgets only for a true shared composition.",
         "type": "list",
         "items": [
-          { "value": "shared", "label": "shared" },
-          { "value": "entities", "label": "entities" },
-          { "value": "features", "label": "features" },
-          { "value": "widgets", "label": "widgets" },
-          { "value": "pages", "label": "pages" }
+          { "value": "pages", "label": "pages (default home for screens)" },
+          { "value": "features", "label": "features (reused user action)" },
+          { "value": "entities", "label": "entities (reused domain model)" },
+          { "value": "shared", "label": "shared (no business rules)" },
+          { "value": "widgets", "label": "widgets (discouraged — true shared composition only)" }
         ]
       }
     },

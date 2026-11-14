@@ -1,0 +1,37 @@
+---
+description: What this repo is. Apps, slice libraries, and the gate command.
+alwaysApply: true
+---
+
+# Project context: <project name>
+
+Template: fill in every `<...>`, delete lines that do not apply, and state only what the repo's config confirms.
+
+## Apps
+
+- **Web**: <framework> at `apps/<app>`. Tag `fsd:layer:app`.
+- **Backend**: <server entry and routing>, or delete this line.
+- **Mobile**: <framework> in `<mobile folder>`, or delete this line.
+- **Data**: <data layer and auth>. Client code: `<paths>`.
+
+## Source layout
+
+- Domain-first: `libs/<domain>/<layer>/<slice>`. Shared kit and clients under `libs/shared/`. Layer-first (`libs/features/...`) only for a single tight app.
+- Cross-domain DTOs / types with no behavior: `libs/shared/shared/kernel` (`fsd:layer:shared`, `fsd:domain:shared`).
+- Slices: <list pages, widgets, features, and entities>.
+- Worked example: `<path to the best-shaped library, including its src/index.ts>`.
+- Generator: `nx g @<scope>/<plugin>:fsd-slice <slice> --domain=<domain> --layer=<layer>`.
+- Untouched libs tagged `legacy-code` (boundary escape hatch). Segment-gate ignore: <list `fsd.nx.json` ignore entries, or "none">.
+
+## Commands
+
+- Dev: `<command>` (port <port>).
+- Gate: `node .agents/skills/feature-sliced-nx/scripts/gate.mjs`.
+- Boundaries: `nx affected -t lint` (the gate runs this when `NX_BASE` or `origin/main` exists).
+- Lint: `<command>`. Format: `<command>`.
+- Type-check: `<command>`.
+- Tests: `<command>`, or "no test runner".
+
+## Secrets
+
+- `.env*` is git-ignored. `.env.example` lists names. Never write secret values into code, docs, or rules.

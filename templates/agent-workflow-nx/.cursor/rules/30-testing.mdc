@@ -1,0 +1,20 @@
+---
+description: Where tests and stories go, and how to verify changes in this repo.
+alwaysApply: true
+---
+
+# Testing and verification
+
+## Tests and stories
+
+- Tests and stories sit next to the file they cover, inside the slice library: `src/lib/ui/<slice>/<slice>.test.tsx`, `src/lib/ui/<slice>/<slice>.stories.tsx`.
+- Storybook is per slice. Add it with `--storybook=true` only when the task asks for it. Do not export stories from `src/index.ts`.
+- If the repo has no test runner (see `10-project-context`), do not invent one or add test files unless asked.
+
+## Verify every change
+
+- Gate: `node .agents/skills/feature-sliced-nx/scripts/gate.mjs` exits 0. The reply names the command and its result.
+- When the change touched Storybook, `nx affected -t build-storybook,test-storybook` exits 0.
+- Lint and type-check: 0 errors when `10-project-context` lists those commands.
+- UI changes: exercise the changed flow in the browser against the dev server. Reuse a running server.
+- Do not report unverified work as done.

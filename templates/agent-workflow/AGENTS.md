@@ -9,10 +9,14 @@ Canonical instructions for any agent.
 ## Stay on the slice
 
 - Layers, top to bottom: `app`, `pages`, `widgets`, `features`, `entities`, `shared`. A slice imports only layers below it, and only through each slice's `index.ts`.
+- Pages-first: keep code in the page until the extraction rule holds (real reuse, independent reason to change, focused boundary). Prefer `app` + `pages` + `shared` before opening features or entities.
+- `widgets` is discouraged. App shell in `app`, one-page blocks in that page, reused actions in `features`, kit UI in `shared`. Open a widget only for a true shared composition.
 - `pages`, `widgets`, `features`, and `entities` are slices. `app` and `shared` are segments, not slices. Segments are `ui`, `model`, `api`, `lib`, `config`.
-- A route screen is a page. A reusable block is a widget. A user action is a feature. A business noun is an entity. Code with no business meaning is shared.
+- A route screen is a page. A user action is a feature when shared. A business noun is an entity when shared. Code with no business rules is shared. Auth tokens default to `shared/auth` or `shared/api`.
 - Do not add a layer, a `processes` folder, a `components` folder, or a `hooks` segment. Do not import a sibling slice. Entities cross-import only through `@x/<slice>`.
-- `ui` is markup and wiring: one component per file, kebab-case, named after the component. Effects, server state, and `fetch` go in `model` or `api`.
+- `ui` is markup plus wiring: one component per file, kebab-case, named after the component. Types and hooks go in `model`, consts in `config`, helpers in `lib`, network in `api`.
+- Segment files are role- or concept-named (`types.ts`, `hooks.ts`, `auth.ts`), never `<slice>.types.ts`.
+- Name a page or slice after the route or capability (`pages/focus` + `ui/focus.tsx`), not a UI variant (`focus-radar-modal`).
 - Keep files at or under `maxFileLines` in `fsd.gate.json` (starter value 200).
 
 ## Gate
@@ -26,7 +30,9 @@ Canonical instructions for any agent.
 
 ## Learned User Preferences
 
-- <Add durable preferences here. Do not paste task-specific notes.>
+- Prioritize small, readable files: `ui` is markup plus wiring; types, hooks, consts, and helpers go in their segments (`model`, `config`, `lib`), not in the component file.
+- Segment files are unprefixed role or concept names (`types.ts`, `hooks.ts`, `auth.ts`), never `task-list.types.ts`.
+- Name a page or slice after the route or capability (`pages/focus` + `ui/focus.tsx`), not a descriptive variant like `focus-radar-modal`.
 
 ## Learned Workspace Facts
 
@@ -34,4 +40,4 @@ Canonical instructions for any agent.
 - Gate config: `fsd.gate.json`. Skill scripts: `.agents/skills/feature-sliced-design/scripts/`.
 - <Data layer, and any data layers to ignore guidance for.>
 - <Backend entry and routing, or delete this line.>
-- <Reference slice, e.g. "`src/features/<slice>/` is the worked example.">
+- <Reference slice, e.g. "`src/pages/<slice>/` is the worked example.">

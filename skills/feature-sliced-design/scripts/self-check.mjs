@@ -116,7 +116,8 @@ try {
     git(gitRoot, ["commit", "-m", "init"])
     const marker = join(gitRoot, "ran.txt")
     const writeRan = `${JSON.stringify(node)} -e "require('fs').writeFileSync('ran.txt','1')"`
-    const clean = pipe("stop-gate.mjs", { cursor_version: "1", status: "completed", loop_count: 0, conversation_id: "clean" }, gitRoot, [writeRan])
+    const cleanId = `clean-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    const clean = pipe("stop-gate.mjs", { cursor_version: "1", status: "completed", loop_count: 0, conversation_id: cleanId }, gitRoot, [writeRan])
     expect("stop skips clean tree", clean, 0, "{}")
     if (existsSync(marker)) {
       failed += 1
@@ -137,11 +138,12 @@ try {
     git(dirtyRoot, ["commit", "-m", "init"])
     writeFileSync(join(dirtyRoot, "dirty.txt"), "x\n")
     const failCmd = `${JSON.stringify(node)} -e "process.exit(1)"`
-    const follow = pipe("stop-gate.mjs", { cursor_version: "1", status: "completed", loop_count: 0, conversation_id: "dirty-follow" }, dirtyRoot, [failCmd])
+    const stamp = `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    const follow = pipe("stop-gate.mjs", { cursor_version: "1", status: "completed", loop_count: 0, conversation_id: `dirty-follow-${stamp}` }, dirtyRoot, [failCmd])
     expect("stop followup", follow, 0, "followup_message")
-    const capped = pipe("stop-gate.mjs", { cursor_version: "1", status: "completed", loop_count: 3, conversation_id: "dirty-cap" }, dirtyRoot, [failCmd])
+    const capped = pipe("stop-gate.mjs", { cursor_version: "1", status: "completed", loop_count: 3, conversation_id: `dirty-cap-${stamp}` }, dirtyRoot, [failCmd])
     expect("stop loop cap", capped, 0, "{}")
-    const aborted = pipe("stop-gate.mjs", { cursor_version: "1", status: "aborted", loop_count: 0, conversation_id: "aborted" }, dirtyRoot, [failCmd])
+    const aborted = pipe("stop-gate.mjs", { cursor_version: "1", status: "aborted", loop_count: 0, conversation_id: `aborted-${stamp}` }, dirtyRoot, [failCmd])
     expect("stop ignores abort", aborted, 0, "{}")
   } finally {
     rmSync(dirtyRoot, { recursive: true, force: true })

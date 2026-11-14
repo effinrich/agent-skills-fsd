@@ -10,9 +10,13 @@ Follow the feature-sliced-design skill before creating or moving a slice: `.agen
 ## Layout
 
 - Layers, top to bottom: `app`, `pages`, `widgets`, `features`, `entities`, `shared`. Imports go downward only.
+- Pages-first. Extract to features or entities only when reuse is real, the boundary has its own reason to change, and the responsibility is focused.
+- `widgets` is discouraged. Prefer `app`, the page, `features`, or `shared/ui` unless the block is a true shared composition.
 - Slices live on `pages`, `widgets`, `features`, and `entities`. Each slice has `index.ts` as its public API. Import that index, not a file inside the slice.
 - Segments are only `ui`, `model`, `api`, `lib`, `config`. `app` and `shared` are not sliced. Entities may add `@x/<other-slice>.ts` for one cross-import.
-- A screen is a page, a reusable block is a widget, a user action is a feature, a business noun is an entity.
+- `ui` is markup plus wiring; types/hooks in `model`, consts in `config`, helpers in `lib`. Segment files are unprefixed (`types.ts`, not `task-list.types.ts`).
+- Name a page or slice after the route or capability (`pages/focus`), not a UI variant (`focus-radar-modal`).
+- A screen is a page. A reused action is a feature. A reused domain model is an entity. Infrastructure with no product rule is shared.
 - Kebab-case file and folder names. One component per file, named after the file.
 
 ## Gate

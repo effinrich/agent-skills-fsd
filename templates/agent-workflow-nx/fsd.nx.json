@@ -1,0 +1,5 @@
+{
+  "libs": "libs",
+  "maxFileLines": 200,
+  "ignore": []
+}

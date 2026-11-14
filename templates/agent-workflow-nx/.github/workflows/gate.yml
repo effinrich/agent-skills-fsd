@@ -1,0 +1,22 @@
+name: gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Replace `npm ci` with pnpm or yarn when that is what the workspace uses.
+      - run: npm ci
+      - run: node .agents/skills/feature-sliced-nx/scripts/gate.mjs
+        env:
+          NX_BASE: origin/main

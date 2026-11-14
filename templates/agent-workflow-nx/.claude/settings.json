@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .agents/skills/feature-sliced-nx/scripts/shell-guard.mjs"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .agents/skills/feature-sliced-nx/scripts/stop-gate.mjs",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
+}
