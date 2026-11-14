@@ -6,21 +6,15 @@
 // A missing budget (no maxFiles and no maxLines) exits 0. Raising a limit is the user's call.
 
 import { readdir, readFile, stat } from "node:fs/promises"
-import { join, relative } from "node:path"
+import { join, relative, resolve } from "node:path"
+import { pathToFileURL } from "node:url"
 import { loadConfig, parseArgs } from "./config.mjs"
 
 const SOURCE = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".css", ".scss"])
 
-try {
-  const args = parseArgs(process.argv.slice(2))
-  if (args.help) {
-    console.log("Usage: size-budget.mjs [--max-files N] [--max-lines N] [--src dir]")
-    process.exit(0)
-  }
-  const config = loadConfig(process.cwd(), args)
+export async function evaluateSizeBudget(config) {
   if (config.maxFiles === null && config.maxLines === null) {
-    console.log("size budget: not set (add maxFiles and maxLines to fsd.gate.json)")
-    process.exit(0)
+    return { status: 0, message: "size budget: not set (add maxFiles and maxLines to fsd.gate.json)" }
   }
   const counts = await countTree(config.src, config.ignore)
   const filesOver = config.maxFiles !== null && counts.files > config.maxFiles
@@ -29,15 +23,30 @@ try {
   const lineLimit = config.maxLines === null ? "none" : String(config.maxLines)
   const summary = `size budget: ${counts.files} files, ${counts.lines} non-blank lines (limits ${fileLimit} / ${lineLimit})`
   if (!filesOver && !linesOver) {
-    console.log(`OK ${summary}`)
-    process.exit(0)
+    return { status: 0, message: `OK ${summary}` }
   }
-  console.error(`FAIL ${summary}`)
-  console.error("Cut scope. Raising maxFiles or maxLines in fsd.gate.json is the user's call.")
-  process.exit(1)
-} catch (error) {
-  console.error(error.message)
-  process.exit(2)
+  return {
+    status: 1,
+    message: `FAIL ${summary}\nCut scope. Raising maxFiles or maxLines in fsd.gate.json is the user's call.`,
+  }
+}
+
+async function main() {
+  try {
+    const args = parseArgs(process.argv.slice(2))
+    if (args.help) {
+      console.log("Usage: size-budget.mjs [--max-files N] [--max-lines N] [--src dir]")
+      process.exit(0)
+    }
+    const config = loadConfig(process.cwd(), args)
+    const result = await evaluateSizeBudget(config)
+    if (result.status === 0) console.log(result.message)
+    else console.error(result.message)
+    process.exit(result.status)
+  } catch (error) {
+    console.error(error.message)
+    process.exit(2)
+  }
 }
 
 async function countTree(dir, ignore) {
@@ -86,3 +95,8 @@ async function exists(path) {
     return false
   }
 }
+
+const runningAsCli =
+  Boolean(process.argv[1]) && pathToFileURL(resolve(process.argv[1])).href === import.meta.url
+
+if (runningAsCli) await main()

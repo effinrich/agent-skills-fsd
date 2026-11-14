@@ -65,10 +65,16 @@ function loadConfig() {
 async function findProjects(dir, acc) {
   const entries = await readdir(dir, { withFileTypes: true })
   const names = new Set(entries.map((entry) => entry.name))
-  const hasSource = names.has("src") && (existsSync(join(dir, "src", "index.ts")) || existsSync(join(dir, "src", "index.tsx")))
-  if (names.has("project.json") || hasSource) {
+  if (names.has("project.json")) {
     acc.push(dir)
     return
+  }
+  if (names.has("src")) {
+    const srcNames = await readdir(join(dir, "src"))
+    if (srcNames.includes("index.ts") || srcNames.includes("index.tsx")) {
+      acc.push(dir)
+      return
+    }
   }
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.name === "node_modules" || entry.name === "dist") continue

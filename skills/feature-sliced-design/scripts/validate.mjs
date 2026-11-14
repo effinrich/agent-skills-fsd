@@ -106,11 +106,12 @@ async function walkForSlices(dir, layer) {
       }
       continue
     }
-    if (await isSliceDir(abs)) {
+    const childEntries = await readdir(abs, { withFileTypes: true })
+    if (isSliceEntries(childEntries)) {
       if (!isTransparent(entry.name) && (!KEBAB.test(entry.name) || SEGMENTS.has(entry.name) || Object.hasOwn(RANK, entry.name))) {
         fail(abs, "slice name must be kebab-case and must not be a layer or segment name.")
       }
-      await validateSlice(abs, layer, entry.name)
+      await validateSlice(abs, layer, entry.name, childEntries)
       continue
     }
     if (isTransparent(entry.name)) {
@@ -125,8 +126,8 @@ async function walkForSlices(dir, layer) {
   }
 }
 
-async function validateSlice(dir, layer, slice) {
-  const entries = await readdir(dir, { withFileTypes: true })
+async function validateSlice(dir, layer, slice, entries) {
+  entries = entries ?? (await readdir(dir, { withFileTypes: true }))
   const names = new Set(entries.map((entry) => entry.name))
   if (!names.has("index.ts") && !names.has("index.tsx")) {
     fail(dir, "slice is missing index.ts, the public API other layers import.")
@@ -282,8 +283,12 @@ async function validatePartials(dir, layer) {
 }
 
 async function checkFile(abs, ctx) {
-  if (!(await exists(abs))) return
-  const info = await stat(abs)
+  let info
+  try {
+    info = await stat(abs)
+  } catch {
+    return
+  }
   if (!info.isFile()) return
   const ext = extension(ctx.fileName)
   if (!CODE_EXT.has(ext) && ext !== ".css" && ext !== ".scss") return
@@ -311,7 +316,7 @@ async function checkFile(abs, ctx) {
     if (effectSegment && EFFECT_RE.test(code)) {
       fail(abs, "effects and server-state hooks belong in model/ (or in app wiring), not in ui, api, lib, or config.")
     }
-    if (FETCH_RE.test(code) && ctx.segment !== "api" && !(ctx.layer === "app" && ctx.segment !== "ui")) {
+    if (ctx.segment !== "api" && FETCH_RE.test(code) && !(ctx.layer === "app" && ctx.segment !== "ui")) {
       fail(abs, "fetch and axios belong in an api segment.")
     }
     if ((ctx.segment === "api" || ctx.segment === "lib" || ctx.segment === "config") && REACT_RE.test(code)) {
@@ -424,8 +429,7 @@ function looksLikeSliceStop(parts, index) {
   return false
 }
 
-async function isSliceDir(dir) {
-  const entries = await readdir(dir, { withFileTypes: true })
+function isSliceEntries(entries) {
   return entries.some((entry) => {
     if (entry.isFile() && (entry.name === "index.ts" || entry.name === "index.tsx")) return true
     if (entry.isDirectory() && (SEGMENTS.has(entry.name) || entry.name === "@x")) return true

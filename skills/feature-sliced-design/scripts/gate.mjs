@@ -5,11 +5,13 @@
 //
 // Reads fsd.gate.json. extra commands and Steiger run only after the architecture check passes.
 // Steiger runs only when "steiger" is true, and only if it is already installed (--no-install).
+// Size budget runs in-process (same config load); validate stays a child so its exit codes stay isolated.
 
 import { spawnSync } from "node:child_process"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadConfig, parseArgs } from "./config.mjs"
+import { evaluateSizeBudget } from "./size-budget.mjs"
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -28,9 +30,11 @@ if (args.help) {
 
 const config = loadConfig(process.cwd(), args)
 const validate = runNode("validate.mjs", process.argv.slice(2))
-const budget = runNode("size-budget.mjs", process.argv.slice(2))
 emit(validate)
-emit(budget)
+
+const budget = await evaluateSizeBudget(config)
+if (budget.status === 0) console.log(budget.message)
+else console.error(budget.message)
 
 if (validate.status === 2) process.exit(2)
 if (validate.status !== 0 || budget.status !== 0) process.exit(1)
