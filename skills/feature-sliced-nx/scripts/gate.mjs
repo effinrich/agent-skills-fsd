@@ -4,7 +4,8 @@
 // A repo with no nx.json (this skills repo) stops after the segment check.
 
 import { spawnSync } from "node:child_process"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -19,7 +20,7 @@ if (!existsSync(join(process.cwd(), "nx.json"))) {
   process.exit(0)
 }
 
-const nxBin = ["node_modules/nx/bin/nx.js", "node_modules/nx/bin/nx"].find((path) => existsSync(join(process.cwd(), path)))
+const nxBin = resolveNxBin()
 if (!nxBin) {
   console.error("nx.json is present but nx is not installed. Boundary lint did not run.")
   process.exit(1)
@@ -35,6 +36,29 @@ const result = spawnSync(process.execPath, [join(process.cwd(), nxBin), "affecte
   stdio: "inherit",
 })
 process.exit(result.status ?? 1)
+
+// Nx moved its CLI entry point in v24 (node_modules/nx/dist/bin/nx.js). Resolve the installed
+// package instead of guessing one path, so the gate works on every Nx version.
+function resolveNxBin() {
+  const candidates = [
+    "node_modules/nx/bin/nx.js",
+    "node_modules/nx/bin/nx",
+    "node_modules/nx/dist/bin/nx.js",
+  ]
+  const direct = candidates.find((path) => existsSync(join(process.cwd(), path)))
+  if (direct) {
+    return direct
+  }
+  try {
+    const require = createRequire(import.meta.url)
+    const manifest = require.resolve("nx/package.json", { paths: [process.cwd()] })
+    const pkg = JSON.parse(readFileSync(manifest, "utf8"))
+    const bin = typeof pkg.bin === "string" ? pkg.bin : pkg.bin?.nx
+    return bin ? join(dirname(manifest), bin) : null
+  } catch {
+    return null
+  }
+}
 
 function mergeBase() {
   for (const ref of ["origin/main", "origin/master"]) {

@@ -7,7 +7,7 @@ The two were not identical. The original has no harness: no gate, hooks, lefthoo
 | Capability | Original | FSD before | FSD now |
 | --- | --- | --- | --- |
 | Scaffold a new unit | `scaffold.mjs <feature> [component]` | `scaffold.mjs <layer> <slice> [segment...]`; Nx `fsd-slice` | Same |
-| Add a component to an existing unit | `scaffold.mjs <feature> <component>` | Missing: refused the existing slice | `scaffold.mjs <layer> <slice> --component <name>`; Nx: `nx g @nx/react:component <path>` (flag checked against `@nx/react` 23.1 schema) |
+| Add a component to an existing unit | `scaffold.mjs <feature> <component>` | Missing: refused the existing slice | `scaffold.mjs <layer> <slice> --component <name>`; Nx: `nx g @nx/react:component <path>` (flag checked against the `@nx/react` 24 schema) |
 | Scaffold under a custom root | Path argument | Hard-coded `src/`, ignored `fsd.gate.json` `src` | Reads `src` from `fsd.gate.json` |
 | Refactor in place, incrementally | Validator only reads `src/features/`, so legacy code elsewhere never fails | Gate failed on every legacy folder; the only escape was hand-editing `ignore`, which `AGENTS.md` forbids agents to do | `validate.mjs --baseline` / `validate-segments.mjs --baseline` writes failing units into `ignore` once, on the user's go-ahead |
 | Splitting a large component | Steps in SKILL.md | Steps in both SKILL.md files | Same, plus the docs step and second-component step |
@@ -21,7 +21,7 @@ The two were not identical. The original has no harness: no gate, hooks, lefthoo
 | Docs change with code | Rule 10 in SKILL.md | Only in the templates | In both SKILL.md files too |
 | Rule files for Cursor, Windsurf, Claude | SKILL.md section plus templates | Nx section plus templates; agnostic had templates only | Section in both |
 | Gate, stop hook, shell guard, lefthook, CI | None | Yes | Same |
-| Size budget | ~200 lines per file, prose | Per-file cap plus tree budget, enforced | Same |
+| Size budget | ~200 lines per file, prose | Agnostic: per-file cap plus tree budget, enforced. Nx: per-file cap only, no tree budget | Same |
 
 Different by design, not gaps:
 
@@ -31,5 +31,5 @@ Different by design, not gaps:
 
 Not covered:
 
-- The Nx generator and `nx g @nx/react:component` were not run here: this repo has no Nx workspace. The self-checks cover the segment gate only.
+- The Nx generator and `nx g @nx/react:component` are not run in this repo: it has no Nx workspace. The self-checks cover the segment gate only. They were run in an Nx 24.0.6 workspace while fixing the two Nx 24 breakages this commit fixes: the gate resolved the Nx CLI at its pre-24 path, and the generator read `npmScope` off a type that no longer declares it.
 - Neither skill checks that the Cursor, Windsurf, and `AGENTS.md` copies of a rule stay in sync.

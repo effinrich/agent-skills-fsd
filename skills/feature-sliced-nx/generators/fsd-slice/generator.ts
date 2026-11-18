@@ -25,7 +25,8 @@ export default async function (tree: Tree, options: FsdSliceGeneratorSchema) {
   const projectDirectory = `libs/${domain}/${options.layer}/${fileName}`
   const projectName = `${domain}-${options.layer}-${fileName}`
   const tags = `fsd:layer:${options.layer},fsd:domain:${domain}`
-  const scope = readNxJson(tree)?.npmScope
+  // npmScope is not in the NxJsonConfiguration type in @nx/devkit 24, but it is there.
+  const scope = (readNxJson(tree) as { npmScope?: string } | undefined)?.npmScope
   const tasks: GeneratorCallback[] = []
 
   const afterLibrary = await libraryGenerator(tree, {
