@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 // Validate a Feature-Sliced tree. Exits 0 when clean, 1 on violations, 2 on usage errors.
 //
-//   node validate.mjs [--config fsd.gate.json] [--src src] [--ignore path] [--max-file-lines 200]
+//   node validate.mjs [--config fsd.gate.json] [--src src] [--ignore path] [--max-file-lines 200] [--baseline]
+//
+// --baseline adopts an existing app: every top-level folder, slice, or segment that fails
+// is added to "ignore" in the config file, so the gate holds new code while legacy code waits.
 
 import { readdir, readFile, stat } from "node:fs/promises"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { loadConfig, parseArgs } from "./config.mjs"
 
@@ -25,7 +28,9 @@ const APP_ROOT_FILES = new Set([
   "styles.css",
   "global.css",
 ])
-const EFFECT_RE = /\b(useEffect|useLayoutEffect|useQuery|useMutation|useInfiniteQuery|useSWR(?:Infinite|Mutation)?)\s*\(/
+const EFFECT_RE = /\b(useEffect|useLayoutEffect|useQuery|useMutation|useInfiniteQuery|useSubscription|useSWR(?:Infinite|Mutation)?)\s*\(/
+const ANY_RE = /(?::\s*|\bas\s+)any\b/
+const ANY_ESCAPE = /(?:eslint|oxlint)-disable|biome-ignore/
 const FETCH_RE = /(?<![.\w$])fetch\s*\(|(?<![.\w$])axios\b/
 const REACT_RE = /\bfrom\s+['"]react(?:-dom)?(?:\/[^'"]*)?['"]|\brequire\(\s*['"]react(?:-dom)?['"]\s*\)/
 const CODE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"])
@@ -40,7 +45,7 @@ const args = (() => {
 })()
 
 if (args.help) {
-  console.log("Usage: validate.mjs [--config fsd.gate.json] [--src src] [--ignore path] [--max-file-lines 200]")
+  console.log("Usage: validate.mjs [--config fsd.gate.json] [--src src] [--ignore path] [--max-file-lines 200] [--baseline]")
   process.exit(0)
 }
 
@@ -48,6 +53,7 @@ const config = loadConfig(process.cwd(), args)
 const srcRoot = config.src
 const maxFileLines = config.maxFileLines
 const violations = []
+const failedPaths = []
 const aliases = await loadAliases(process.cwd())
 
 if (!(await exists(srcRoot))) {
@@ -56,6 +62,11 @@ if (!(await exists(srcRoot))) {
 }
 
 await validateRoot(srcRoot)
+
+if (args.baseline) {
+  writeBaseline()
+  process.exit(0)
+}
 
 if (violations.length === 0) {
   console.log(`OK feature-sliced design: ${display(srcRoot)}`)
@@ -307,6 +318,7 @@ async function checkFile(abs, ctx) {
     fail(abs, "ui holds components. Move hooks, types, and helpers to model, lib, or config.")
   }
 
+  checkAny(abs, text)
   const code = stripComments(text)
   if (ctx.component && !isTestLike(ctx.fileName)) {
     checkComponent(abs, ctx.fileName, code)
@@ -326,6 +338,43 @@ async function checkFile(abs, ctx) {
   for (const spec of collectSpecs(code)) {
     checkImport(abs, spec, ctx)
   }
+}
+
+function checkAny(abs, text) {
+  const lines = text.split(/\r?\n/)
+  lines.forEach((line, index) => {
+    const code = line.replace(/\/\/.*$/, "").replace(/\/\*.*?\*\//g, "")
+    if (!ANY_RE.test(code)) return
+    if (ANY_ESCAPE.test(line) || ANY_ESCAPE.test(lines[index - 1] ?? "")) return
+    fail(abs, `inline "any" at line ${index + 1}. Type it, or add a lint-disable comment that says why.`)
+  })
+}
+
+// The smallest unit ignored whole: a non-layer folder or file, a slice, or an unsliced segment.
+function legacyUnit(abs) {
+  const parts = partsUnderSrc(abs)
+  if (!parts) return null
+  if (!Object.hasOwn(RANK, parts[0]) || parts.length === 1) return parts.slice(0, 1)
+  if (!SLICED.has(parts[0])) return parts.slice(0, 2)
+  return parts.slice(0, describe(parts).sliceIndex + 1)
+}
+
+function writeBaseline() {
+  const file = resolve(process.cwd(), args.config ?? "fsd.gate.json")
+  const raw = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {}
+  const before = new Set(Array.isArray(raw.ignore) ? raw.ignore : [])
+  const added = new Set()
+  for (const abs of failedPaths) {
+    const unit = legacyUnit(abs)
+    if (!unit) continue
+    const entry = display(join(srcRoot, ...unit))
+    if (!before.has(entry)) added.add(entry)
+  }
+  raw.ignore = [...before, ...added].sort()
+  writeFileSync(file, `${JSON.stringify(raw, null, 2)}\n`)
+  console.log(`Baseline: ${added.size} path(s) added to ignore in ${display(file)}`)
+  for (const entry of [...added].sort()) console.log(`  ${entry}`)
+  console.log("Size budget unchanged. Run the gate next; raising maxFiles or maxLines is the user's call.")
 }
 
 function checkComponent(abs, fileName, code) {
@@ -495,6 +544,7 @@ function ignored(abs) {
 }
 
 function fail(abs, message) {
+  failedPaths.push(abs)
   violations.push(`${display(abs)}: ${message}`)
 }
 

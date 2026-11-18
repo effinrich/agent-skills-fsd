@@ -22,7 +22,7 @@ Canonical instructions for any agent.
 ## Gate
 
 - The check is `node .agents/skills/feature-sliced-design/scripts/gate.mjs` (or `bun run gate` / `npm run gate` once that script exists). Done means this command passed and the reply names it.
-- Do not raise `maxFiles`, `maxLines`, or `maxFileLines`, and do not add `ignore` entries, to make the gate pass. That is the user's call.
+- Do not raise `maxFiles`, `maxLines`, or `maxFileLines`, and do not add `ignore` entries, to make the gate pass. That is the user's call. The one-time adoption `validate.mjs --baseline` runs only on their go-ahead.
 - Do not skip git hooks (`--no-verify`, `git commit -n`, `LEFTHOOK=0`, `HUSKY=0`). The shell hook blocks those commands.
 - On an existing app, migrate the file you touch. Leave ignored legacy folders alone and say so.
 - When a file moves or is renamed, update every doc that names the old path in the same change.

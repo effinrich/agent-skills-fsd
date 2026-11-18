@@ -2,13 +2,18 @@
 // Scaffold a Feature-Sliced slice.
 //
 //   node scaffold.mjs <pages|widgets|features|entities> <slice> [segment...]
+//   node scaffold.mjs <pages|widgets|features|entities> <slice> --component <name>
 //
-// Names are kebab-case. Refuses to overwrite. Prints the created tree.
+// Names are kebab-case. Refuses to overwrite. Prints the created tree. The source root is
+// "src" in fsd.gate.json (default src).
 // Default segments: pages and widgets get ui; features get ui and model; entities get model.
+// --component adds ui/<name>/<name>.tsx to an existing slice; export it from index.ts only
+// when another layer needs it.
 
 import { mkdir, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { relative, resolve, join } from "node:path"
+import { loadConfig, parseArgs } from "./config.mjs"
 
 const LAYERS = new Set(["pages", "widgets", "features", "entities"])
 const SEGMENTS = new Set(["ui", "model", "api", "lib", "config"])
@@ -20,9 +25,13 @@ const DEFAULTS = {
   entities: ["model"],
 }
 
-const [layer, slice, ...segmentArgs] = process.argv.slice(2)
-if (!layer || !slice) {
-  console.error("Usage: scaffold.mjs <pages|widgets|features|entities> <slice> [segment...]")
+const argv = process.argv.slice(2)
+const componentFlag = argv.indexOf("--component")
+const component = componentFlag === -1 ? null : argv[componentFlag + 1]
+if (componentFlag !== -1) argv.splice(componentFlag, 2)
+const [layer, slice, ...segmentArgs] = argv
+if (!layer || !slice || (componentFlag !== -1 && !component)) {
+  console.error("Usage: scaffold.mjs <pages|widgets|features|entities> <slice> [segment...] | --component <name>")
   process.exit(1)
 }
 if (!LAYERS.has(layer)) {
@@ -42,7 +51,35 @@ for (const segment of segments) {
   }
 }
 
-const root = resolve(process.cwd(), "src", layer, slice)
+const root = resolve(loadConfig(process.cwd(), parseArgs([])).src, layer, slice)
+
+if (component) {
+  if (!KEBAB.test(component)) {
+    console.error(`Component name must be kebab-case (got ${component}).`)
+    process.exit(1)
+  }
+  if (!existsSync(root)) {
+    console.error(`No slice at ${relative(process.cwd(), root)}. Scaffold the slice first.`)
+    process.exit(1)
+  }
+  const dir = join(root, "ui", component)
+  if (existsSync(dir)) {
+    console.error(`Refusing to overwrite existing path: ${relative(process.cwd(), dir)}`)
+    process.exit(1)
+  }
+  const name = toPascal(component)
+  await mkdir(dir, { recursive: true })
+  await writeFile(join(dir, `${component}.tsx`), `// ${name} — markup and wiring. Effects, server state, and network calls stay out of ui.
+
+export const ${name} = () => {
+  return null
+}
+`)
+  console.log(`Created ${relative(process.cwd(), dir).replaceAll("\\", "/")}/${component}.tsx`)
+  console.log("Export it from index.ts only when another layer imports it.")
+  process.exit(0)
+}
+
 if (existsSync(root)) {
   console.error(`Refusing to overwrite existing path: ${relative(process.cwd(), root)}`)
   process.exit(1)

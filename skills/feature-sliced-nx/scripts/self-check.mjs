@@ -81,6 +81,37 @@ try {
     rmSync(ignored, { recursive: true, force: true })
   }
 
+  expectFail("fetch in lib", {
+    "libs/catalog/features/product-card/src/lib/lib/product-card.ts": 'export const load = () => fetch("/api")\n',
+  }, "go in api")
+
+  expectFail("query in api", {
+    "libs/catalog/features/product-card/src/lib/api/product-card.ts":
+      'import { useQuery } from "@tanstack/react-query"\nexport const useLoad = () => useQuery({ queryKey: ["x"] })\n',
+  }, "go in model")
+
+  expectFail("inline any", {
+    "libs/catalog/features/product-card/src/lib/model/product-card.ts": "export const parse = (value: any) => value\n",
+  }, 'inline "any"')
+
+  expectFail("component folder without file", {
+    "libs/catalog/features/product-card/src/lib/ui/badge/partials/dot.tsx": "export function Dot() { return null }\n",
+  }, "needs badge.tsx")
+
+  const legacy = mkdtempSync(join(tmpdir(), "fsd-nx-legacy-"))
+  try {
+    writeTree(legacy, {
+      ...validLibrary("catalog", "features", "product-card"),
+      "libs/old-utils/project.json": '{ "name": "old-utils", "tags": [] }\n',
+      "libs/old-utils/src/index.ts": "export {}\n",
+    })
+    expect("legacy fails", run("validate-segments.mjs", legacy), 1, "libs/old-utils")
+    expect("baseline", run("validate-segments.mjs", legacy, ["--baseline"]), 0, "libs/old-utils")
+    expect("baseline then clean", run("validate-segments.mjs", legacy), 0, "OK nx segments")
+  } finally {
+    rmSync(legacy, { recursive: true, force: true })
+  }
+
   const missing = mkdtempSync(join(tmpdir(), "fsd-nx-missing-"))
   try {
     expect("missing libs", run("validate-segments.mjs", missing), 2, "does not exist")
@@ -121,8 +152,8 @@ function expectFail(name, files, needle) {
   }
 }
 
-function run(script, cwd) {
-  return spawnSync(node, [join(scripts, script)], { cwd, encoding: "utf8" })
+function run(script, cwd, extra = []) {
+  return spawnSync(node, [join(scripts, script), ...extra], { cwd, encoding: "utf8" })
 }
 
 function pipe(script, payload) {

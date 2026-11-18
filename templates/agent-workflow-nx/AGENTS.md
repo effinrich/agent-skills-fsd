@@ -24,7 +24,7 @@ Canonical instructions for any agent.
 ## Gate
 
 - The check is `node .agents/skills/feature-sliced-nx/scripts/gate.mjs` (or `bun run gate` / `npm run gate` once that script exists). Done means this command passed and the reply names it.
-- Do not raise `maxFileLines`, widen `ignore`, retag a library, or set the boundary rule to `warn` to make the gate pass. That is the user's call.
+- Do not raise `maxFileLines`, widen `ignore`, retag a library, or set the boundary rule to `warn` to make the gate pass. That is the user's call. The one-time adoption `validate-segments.mjs --baseline` runs only on their go-ahead.
 - Do not skip git hooks (`--no-verify`, `git commit -n`, `LEFTHOOK=0`, `HUSKY=0`). The shell hook blocks those commands.
 - On an existing app, migrate the file you touch. Tag untouched libraries `legacy-code` (see the skill). Leave ignored libraries alone and say so. Finish one slice before starting the next. New work uses `fsd-slice`, not `legacy-code`.
 - When a file moves or is renamed, update every doc that names the old path in the same change.

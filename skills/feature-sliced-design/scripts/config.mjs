@@ -39,6 +39,7 @@ export function parseArgs(argv) {
     else if (arg === "--max-files") out.maxFiles = number(next(), arg)
     else if (arg === "--max-lines") out.maxLines = number(next(), arg)
     else if (arg === "--max-file-lines") out.maxFileLines = number(next(), arg)
+    else if (arg === "--baseline") out.baseline = true
     else if (arg === "-h" || arg === "--help") out.help = true
     else throw new Error(`Unknown argument: ${arg}`)
   }

@@ -22,7 +22,7 @@ Follow the feature-sliced-nx skill before creating or moving a slice: `.agents/s
 ## Gate
 
 - Pass `node .agents/skills/feature-sliced-nx/scripts/gate.mjs` before calling the work done. Name that command in the reply.
-- Do not raise `maxFileLines` in `fsd.nx.json`, widen `ignore`, retag a library, or skip git hooks. Those are the user's call.
+- Do not raise `maxFileLines` in `fsd.nx.json`, widen `ignore`, retag a library, or skip git hooks. Those are the user's call. The one-time adoption `validate-segments.mjs --baseline` runs only on their go-ahead.
 - Migrate the file you touch. Do not rewrite ignored libraries. Finish one slice before the next.
 - When a path changes, update every doc that names it in the same change.
 - Do not commit or push unless the user asks.

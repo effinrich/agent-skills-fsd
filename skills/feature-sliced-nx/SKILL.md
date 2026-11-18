@@ -46,7 +46,7 @@ Not every layer is required. Start with the app plus page libraries and shared l
 | Pure helpers | `lib` |
 | Constants and flags | `config` |
 
-`ui` is markup plus wiring: one component per file, kebab-case, named after the component. A component with partials uses `ui/<component>/<component>.tsx` and `partials/`. A single component with no partials may be `ui/<component>.tsx`. Types and hooks go in `model`, consts in `config`, helpers in `lib`, network in `api`. Segment files are role- or concept-named (`types.ts`, `hooks.ts`), never prefixed with the slice (`product-card.types.ts`). Name a page or slice after the route or capability (`pages/focus` + `ui/focus.tsx`), not a UI variant (`focus-radar-modal`). No `useEffect`, `useQuery`, `useMutation`, `fetch`, or `axios` in `ui`. No `fetch` in `model`. `api`, `lib`, and `config` do not import React. Files stay at or under `maxFileLines` in `fsd.nx.json` (starter 200). Tests and stories sit next to the file they cover and are exempt from the line cap.
+`ui` is markup plus wiring: one component per file, kebab-case, named after the component. A component with partials uses `ui/<component>/<component>.tsx` and `partials/`. A single component with no partials may be `ui/<component>.tsx`. Types and hooks go in `model`, consts in `config`, helpers in `lib`, network in `api`. Segment files are role- or concept-named (`types.ts`, `hooks.ts`), never prefixed with the slice (`product-card.types.ts`). Name a page or slice after the route or capability (`pages/focus` + `ui/focus.tsx`), not a UI variant (`focus-radar-modal`). Effects and server-state hooks (`useEffect`, `useQuery`, `useMutation`) live only in `model`. `fetch` and `axios` live only in `api`. `api`, `lib`, and `config` do not import React. Files stay at or under `maxFileLines` in `fsd.nx.json` (starter 200). Tests and stories sit next to the file they cover and are exempt from the line cap.
 
 Other projects import `@<scope>/catalog-features-product-card`. They do not import `libs/.../src/lib/ui/product-card`.
 
@@ -124,7 +124,9 @@ Move code as-is. Renames and logic rewrites belong in a separate change.
 6. `fetch` / `axios` -> `src/lib/api/`.
 7. Each commented JSX section -> `src/lib/ui/<component>/partials/<part>.tsx`. The partial is named after its component.
 8. `src/index.ts` exports the component and the types other projects may use. Stories stay unexported.
-9. Run the gate. Name the command and the result.
+9. A second component in the same library: `nx g @nx/react:component libs/<domain>/<layer>/<slice>/src/lib/ui/<name>/<name>`. Add `--export` only when other projects import it.
+10. Update every doc that names a moved path (README, agent files, rule folders) in the same change.
+11. Run the gate. Name the command and the result.
 
 ## Refactoring an existing app
 
@@ -135,7 +137,7 @@ Migrate the file you touch. Everything else stays. Prefer domain-first `libs/<do
 3. Untouched files keep their place. Report them. Do not fix them in this change.
 4. Finish one slice before starting the next. Moves across many slices need the user's go-ahead.
 5. Run the gate for the slices you migrated. A violation in a library you did not touch is a report, not a drive-by fix.
-6. Libraries that are not moved yet may also sit in `fsd.nx.json` `ignore` for the segment gate. Do not ignore code you just wrote. Do not raise `maxFileLines`, retag a library upward, or set the boundary rule to `warn` to clear a failure. Ask the user.
+6. Libraries that are not moved yet sit in `fsd.nx.json` `ignore` for the segment gate. At adoption, with the user's go-ahead, `validate-segments.mjs --baseline` adds every failing library once; show the user the list. Remove an entry when its library becomes a slice. Do not ignore code you just wrote, and do not re-run `--baseline` to hide a new failure. Do not raise `maxFileLines`, retag a library upward, or set the boundary rule to `warn` to clear a failure. Ask the user.
 
 From a feature-folder app (`src/features/<feature>/<component>/{types,consts,hooks,utils,api}.ts`): a screen becomes a page library and stays page-local until the extraction rule holds; a shared user action becomes a feature library; app shell stays in the app; `types.ts` and `hooks.ts` go to `model`, `consts.ts` to `config`, `utils.ts` to `lib`, `api.ts` to that consumer's `api/` (or `shared` when plain and shared); `partials/` stays under `ui/<component>/partials/`. Cross-domain DTOs with no behavior go in `libs/shared/shared/kernel`.
 
@@ -151,7 +153,7 @@ From a feature-folder app (`src/features/<feature>/<component>/{types,consts,hoo
 
 `node .agents/skills/feature-sliced-nx/scripts/gate.mjs` runs, in order:
 
-1. `validate-segments.mjs` — path `libs/<domain>/<layer>/<slice>`, tags, public `src/index.ts`, segment names, kebab-case, one component per file, effects and network placement, per-file line cap.
+1. `validate-segments.mjs` — path `libs/<domain>/<layer>/<slice>`, tags, public `src/index.ts`, segment names, kebab-case, one component per file, component folders named after their file, effects only in `model`, network only in `api`, inline `any` without a lint-disable comment, per-file line cap.
 2. `nx affected -t lint` when `nx.json` exists and a base exists (`NX_BASE`, otherwise `origin/main`). That is the layer rule. This skills repo has no `nx.json`, so the segment check is the whole gate there.
 
 | Checkpoint | Mechanism |
@@ -189,7 +191,7 @@ Edit a rule in every copy in the same change. This skill stays the long form.
 
 Run from the workspace root. Hooks and CI use the vendored path `.agents/skills/feature-sliced-nx`.
 
-- `validate-segments.mjs` — exits 0 when slice libraries match this skill, 1 on violations, 2 when `libs/` is missing.
+- `validate-segments.mjs` — exits 0 when slice libraries match this skill, 1 on violations, 2 when `libs/` is missing. `--baseline` writes failing libraries into `fsd.nx.json` `ignore` (adoption only, on the user's go-ahead).
 - `gate.mjs` — segment check, then `nx affected -t lint` when `nx.json` is present.
 - `stop-gate.mjs` — Cursor and Claude Code stop hook.
 - `shell-guard.mjs` — Cursor and Claude Code shell hook.

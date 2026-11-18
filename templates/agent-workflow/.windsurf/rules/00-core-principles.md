@@ -22,7 +22,7 @@ Follow the feature-sliced-design skill before creating or moving a slice: `.agen
 ## Gate
 
 - Pass `node .agents/skills/feature-sliced-design/scripts/gate.mjs` before calling the work done. Name that command in the reply.
-- Do not raise limits in `fsd.gate.json`, widen `ignore`, or skip git hooks. Those are the user's call.
+- Do not raise limits in `fsd.gate.json`, widen `ignore`, or skip git hooks. Those are the user's call. The one-time adoption `validate.mjs --baseline` runs only on their go-ahead.
 - Do not add layers or folders the skill does not name (`processes`, `components`, `hooks`).
 - Migrate the file you touch. Do not rewrite ignored legacy folders.
 - When a path changes, update every doc that names it in the same change.

@@ -30,7 +30,7 @@ Agnostic, no `nx.json`:
 2. Copy the contents of `templates/agent-workflow/` into the project root. If `.cursor/hooks.json` or `.claude/settings.json` already exists, merge the hook entries instead of replacing the file.
 3. Fill in every `<...>` in `AGENTS.md` and `.cursor/rules/10-project-context.mdc` (and the matching Windsurf file).
 4. Add a gate script: `"gate": "node .agents/skills/feature-sliced-design/scripts/gate.mjs"`.
-5. Set `maxFiles` and `maxLines` in `fsd.gate.json`. On an existing app, set them to today's counts. Raising them later is a user decision. Put folders that are not on Feature-Sliced yet in `ignore`.
+5. Set `maxFiles` and `maxLines` in `fsd.gate.json`. On an existing app, set them to today's counts. Raising them later is a user decision. Put folders that are not on Feature-Sliced yet in `ignore`: `node .agents/skills/feature-sliced-design/scripts/validate.mjs --baseline` adds every failing top-level folder, slice, or segment for you. Run it once at adoption, then review the list.
 6. Wire `lefthook.yml` (or the same command in husky) and keep `.github/workflows/gate.yml` required on the default branch.
 
 `node .agents/skills/feature-sliced-design/scripts/gate.mjs` is the check. It fails when a layer, a public import, a file size, or the tree budget is wrong. The stop hook runs it before an agent finishes. The shell guard refuses `git commit --no-verify` and the other hook bypasses.
@@ -42,7 +42,7 @@ Nx workspace:
 3. Fill in every `<...>` in `AGENTS.md` and `.cursor/rules/10-project-context.mdc` (and the matching Windsurf file).
 4. Register `generators/fsd-slice/` in the workspace plugin. New slices come from that generator, not from a hand-built folder.
 5. Add `"gate": "node .agents/skills/feature-sliced-nx/scripts/gate.mjs"`.
-6. Paste `boundaries/dep-constraints.mjs` into the module-boundary rule. On an existing workspace, put libraries that are not slices yet in `fsd.nx.json` `ignore`.
+6. Paste `boundaries/dep-constraints.mjs` into the module-boundary rule. On an existing workspace, put libraries that are not slices yet in `fsd.nx.json` `ignore`: `node .agents/skills/feature-sliced-nx/scripts/validate-segments.mjs --baseline` adds every failing library. Run it once at adoption, then tag those libraries `legacy-code`.
 7. Keep `lefthook.yml` and `.github/workflows/gate.yml` required on the default branch. CI sets `NX_BASE`.
 
 `node .agents/skills/feature-sliced-nx/scripts/gate.mjs` checks segments, then runs `nx affected -t lint` when `nx.json` is present. The same stop hook and shell guard wrap that command.

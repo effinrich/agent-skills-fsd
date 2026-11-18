@@ -1,24 +1,30 @@
 #!/usr/bin/env node
 // Segment rules inside an Nx slice library. Module boundaries are a separate nx lint.
 //
-//   node validate-segments.mjs [--libs libs] [--max-file-lines 200] [--ignore prefix]
+//   node validate-segments.mjs [--libs libs] [--max-file-lines 200] [--ignore prefix] [--baseline]
 //
 // Exits 0 when every library under libs/ matches this skill, 1 on violations,
 // 2 when the libs directory is missing. fsd.nx.json supplies the same fields.
+// --baseline adopts an existing workspace: every failing library is added to "ignore"
+// in fsd.nx.json, so the gate holds new slices while legacy libraries wait.
 
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { readdir, readFile } from "node:fs/promises"
 import { join, relative } from "node:path"
 
 const LAYERS = new Set(["pages", "widgets", "features", "entities", "shared"])
 const SEGMENTS = new Set(["ui", "model", "api", "lib", "config"])
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-const EFFECT = /\b(?:useEffect|useLayoutEffect|useQuery|useMutation|useInfiniteQuery|useSWR(?:Infinite|Mutation)?)\s*\(/
+const EFFECT = /\b(?:useEffect|useLayoutEffect|useQuery|useMutation|useInfiniteQuery|useSubscription|useSWR(?:Infinite|Mutation)?)\s*\(/
 const FETCH = /(?<![.\w$])(?:fetch\s*\(|axios\b)/
 const REACT_IMPORT = /\bfrom\s+['"]react(?:\/[^'"]*)?['"]/
+const ANY = /(?::\s*|\bas\s+)any\b/
+const ANY_ESCAPE = /(?:eslint|oxlint)-disable|biome-ignore/
 
 const config = loadConfig()
 const violations = []
+const failedProjects = new Set()
+let currentProject = null
 
 const libsRoot = join(process.cwd(), config.libs)
 if (!existsSync(libsRoot)) {
@@ -31,7 +37,21 @@ await findProjects(libsRoot, projects)
 
 for (const project of projects) {
   if (ignored(project)) continue
+  currentProject = project
   await checkProject(project)
+}
+
+if (config.baseline) {
+  const file = join(process.cwd(), "fsd.nx.json")
+  const raw = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {}
+  const before = new Set(raw.ignore ?? [])
+  const added = [...failedProjects].map((project) => relative(process.cwd(), project).replace(/\\/g, "/")).filter((entry) => !before.has(entry))
+  raw.ignore = [...before, ...added].sort()
+  writeFileSync(file, `${JSON.stringify(raw, null, 2)}\n`)
+  console.log(`Baseline: ${added.length} librar${added.length === 1 ? "y" : "ies"} added to ignore in fsd.nx.json`)
+  for (const entry of added.sort()) console.log(`  ${entry}`)
+  console.log("Tag those libraries legacy-code for the boundary rule. New work goes in generated slices.")
+  process.exit(0)
 }
 
 if (violations.length === 0) {
@@ -54,6 +74,7 @@ function loadConfig() {
     if (arg === "--libs") config.libs = args[++i]
     else if (arg === "--max-file-lines") config.maxFileLines = Number(args[++i])
     else if (arg === "--ignore") config.ignore.push(args[++i])
+    else if (arg === "--baseline") config.baseline = true
     else {
       console.error(`Unknown argument: ${arg}`)
       process.exit(2)
@@ -164,6 +185,9 @@ async function walkSegment(dir, segment) {
         fail(abs, "folder name must be kebab-case.")
         continue
       }
+      if (segment === "ui" && entry.name !== "partials" && !existsSync(join(abs, `${entry.name}.tsx`))) {
+        fail(abs, `component folder needs ${entry.name}.tsx.`)
+      }
       await walkSegment(abs, segment)
       continue
     }
@@ -186,19 +210,30 @@ async function checkFile(abs, segment, name) {
   if (lines > config.maxFileLines && !isTestLike(name)) {
     fail(abs, `${lines} lines. Keep files at or under ${config.maxFileLines}.`)
   }
+  if (!/\.(css|scss)$/.test(name) && !name.endsWith(".d.ts")) checkAny(abs, text)
   const code = stripComments(text)
   if (segment === "ui") {
     if (name.endsWith(".ts") && !name.endsWith(".d.ts") && !isTestLike(name) && name !== "index.ts") {
       fail(abs, "hooks and types go in model, not ui.")
     }
     if (isComponentSource(name) && !isTestLike(name)) checkComponent(abs, name, code)
-    if (EFFECT.test(code)) fail(abs, "effects and server state go in model.")
-    if (FETCH.test(code)) fail(abs, "fetch and axios go in api.")
   }
-  if (segment === "model" && FETCH.test(code)) fail(abs, "fetch and axios go in api.")
+  if (isTestLike(name)) return
+  if (segment !== "model" && EFFECT.test(code)) fail(abs, "effects and server state go in model.")
+  if (segment !== "api" && FETCH.test(code)) fail(abs, "fetch and axios go in api.")
   if ((segment === "api" || segment === "lib" || segment === "config") && REACT_IMPORT.test(code)) {
     fail(abs, `${segment} does not import React.`)
   }
+}
+
+function checkAny(abs, text) {
+  const lines = text.split(/\r?\n/)
+  lines.forEach((line, index) => {
+    const code = line.replace(/\/\/.*$/, "").replace(/\/\*.*?\*\//g, "")
+    if (!ANY.test(code)) return
+    if (ANY_ESCAPE.test(line) || ANY_ESCAPE.test(lines[index - 1] ?? "")) return
+    fail(abs, `inline "any" at line ${index + 1}. Type it, or add a lint-disable comment that says why.`)
+  })
 }
 
 function checkComponent(abs, name, code) {
@@ -232,6 +267,7 @@ function ignored(project) {
 }
 
 function fail(abs, message) {
+  if (currentProject) failedProjects.add(currentProject)
   const rel = relative(process.cwd(), abs).replace(/\\/g, "/")
   violations.push(`${rel || abs}: ${message}`)
 }

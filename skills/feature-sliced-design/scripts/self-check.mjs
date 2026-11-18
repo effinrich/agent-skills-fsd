@@ -28,9 +28,50 @@ try {
     expect("scaffold validates", run("validate.mjs", scaffolded), 0, "OK feature-sliced design")
     const again = spawnSync(node, [join(scripts, "scaffold.mjs"), "features", "sign-in"], { cwd: scaffolded, encoding: "utf8" })
     expect("scaffold refuses overwrite", again, 1, "Refusing to overwrite")
+    const added = spawnSync(node, [join(scripts, "scaffold.mjs"), "features", "sign-in", "--component", "sign-in-form"], { cwd: scaffolded, encoding: "utf8" })
+    expect("scaffold component", added, 0, "sign-in-form.tsx")
+    expect("scaffold component validates", run("validate.mjs", scaffolded), 0, "OK feature-sliced design")
+    const addedAgain = spawnSync(node, [join(scripts, "scaffold.mjs"), "features", "sign-in", "--component", "sign-in-form"], { cwd: scaffolded, encoding: "utf8" })
+    expect("scaffold component refuses overwrite", addedAgain, 1, "Refusing to overwrite")
+    const orphan = spawnSync(node, [join(scripts, "scaffold.mjs"), "features", "nope", "--component", "x"], { cwd: scaffolded, encoding: "utf8" })
+    expect("scaffold component needs slice", orphan, 1, "Scaffold the slice first")
   } finally {
     rmSync(scaffolded, { recursive: true, force: true })
   }
+
+  const legacy = mkdtempSync(join(tmpdir(), "fsd-legacy-"))
+  try {
+    writeTree(legacy, {
+      ...validTree(),
+      "src/components/TaskCard.tsx": "export const TaskCard = () => null\n",
+      "src/features/tasks/task-list/task-list.tsx": "export const TaskList = () => null\n",
+      "src/features/tasks/task-list/hooks.ts": "export {}\n",
+    })
+    expect("legacy fails", run("validate.mjs", legacy), 1, "src/components")
+    expect("baseline", run("validate.mjs", legacy, ["--baseline"]), 0, "src/features/tasks")
+    expect("baseline then clean", run("validate.mjs", legacy), 0, "OK feature-sliced design")
+  } finally {
+    rmSync(legacy, { recursive: true, force: true })
+  }
+
+  expectFail("inline any", {
+    "src/features/auth/model/auth.ts": "export const parse = (value: any) => value\n",
+  }, 'inline "any"')
+
+  const escaped = mkdtempSync(join(tmpdir(), "fsd-any-"))
+  try {
+    writeTree(escaped, {
+      ...validTree(),
+      "src/features/auth/model/auth.ts": "// eslint-disable-next-line @typescript-eslint/no-explicit-any -- third-party payload\nexport const parse = (value: any) => value\n",
+    })
+    expect("any with disable comment", run("validate.mjs", escaped), 0, "OK feature-sliced design")
+  } finally {
+    rmSync(escaped, { recursive: true, force: true })
+  }
+
+  expectFail("subscription in ui", {
+    "src/pages/home/ui/home/home.tsx": "export const Home = () => { useSubscription(q); return null }\n",
+  }, "model/")
 
   expectFail("sibling feature import", {
     "src/features/billing/index.ts": 'import { Auth } from "features/auth"\nexport {}\n',
