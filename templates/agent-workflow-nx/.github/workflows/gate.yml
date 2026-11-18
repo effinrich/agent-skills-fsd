@@ -19,4 +19,4 @@ jobs:
       - run: npm ci
       - run: node .agents/skills/feature-sliced-nx/scripts/gate.mjs
         env:
-          NX_BASE: origin/main
+          NX_BASE: "${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
