@@ -23,6 +23,36 @@ Use Nx's public CLI and generator APIs only. Do not read Nx's file layout or its
 
 Last verified against Nx 24.0.6 on 2026-11-18, in an Nx workspace using this skill.
 
+## Creating or adopting a workspace
+
+The skill does not do this. Nx's own commands do, and they are the right tool. Verified against Nx 24.
+
+A new repo:
+
+```
+npx create-nx-workspace@latest <name> --preset=ts
+cd <name>
+npx nx add @nx/react
+```
+
+A repo that is not an Nx workspace yet:
+
+```
+npx nx init --interactive=false --plugins=@nx/react --cacheable=build,test,lint
+```
+
+`nx init` leaves the existing source where it is. Move the app into `apps/<app>`, then generate the application project:
+
+```
+npx nx g @nx/react:application <app> --directory=apps/<app> --bundler=vite --style=css --tags=fsd:layer:app
+```
+
+Then continue with [New project](#new-project): vendor this skill, copy `templates/agent-workflow-nx/`, wire the boundary rule, and generate each earned slice with `fsd-slice`.
+
+Keep the app's own build and tests green at every step. This is a one-time migration, not a skill feature: the skill governs the result.
+
+Run `npx nx init --help` and `npx nx g @nx/react:application --help` in the repo before changing flags. Nx moves them between versions.
+
 ## Layout
 ```
 apps/<app>/                         Tag fsd:layer:app. Routes re-export page libraries.
