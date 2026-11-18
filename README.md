@@ -2,7 +2,7 @@
 
 Portable Feature-Sliced Design skill, plus the project files that make an agent stay on that path: a gate, a stop hook, and a shell guard.
 
-This is the sliced sibling of [agent-skills](https://github.com/effinrich/agent-skills). That repo uses feature folders (`src/features/<feature>/<component>/`). This one uses [Feature-Sliced Design](https://feature-sliced.design/): layers, slices, segments, and a public API. The two are not interchangeable.
+This is the sliced sibling of [agent-skills](https://github.com/effinrich/agent-skills). That repo uses feature folders (`src/features/<feature>/<component>/`). This one uses [Feature-Sliced Design](https://feature-sliced.design/): layers, slices, segments, and a public API. The two are not interchangeable. [PARITY.md](PARITY.md) lists what each one does and where they differ.
 
 ## Install the skill (global, so agents can read it)
 
