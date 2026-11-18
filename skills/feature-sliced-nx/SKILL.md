@@ -9,8 +9,21 @@ One slice is one Nx library. The app is an Nx application, not a slice. This ski
 
 Methodology: [Feature-Sliced Design](https://feature-sliced.design/). Generator options match current `@nx/react:library` and `@nx/react:storybook-configuration` (`directory` is the project root; `projectNameAndRootFormat` is gone). Confirm with `nx g @nx/react:library --help` in the workspace before changing flags.
 
-## Layout
+## Scope
 
+This skill owns the Feature-Sliced pattern, the slice generator, and the harness that enforces them. It does not own workspace tooling.
+
+- It does not create an Nx workspace. Use `create-nx-workspace` first, or `nx init` for a repo that already has one, then install this skill.
+- It does not convert a non-Nx app into an Nx workspace. That is a one-time migration done with Nx's own commands. This skill governs the result.
+- It does not generate the application. `nx g @nx/react:application` does that; tag the result `fsd:layer:app`.
+
+Migrating an existing app onto the FSD libraries is in scope, one slice at a time. See [Refactoring an existing app](#refactoring-an-existing-app).
+
+Use Nx's public CLI and generator APIs only. Do not read Nx's file layout or its internal types. Resolve the CLI through the installed package's `bin` field rather than a hardcoded path, so the gate keeps working when Nx moves it.
+
+Last verified against Nx 24.0.6 on 2026-11-18, in an Nx workspace using this skill.
+
+## Layout
 ```
 apps/<app>/                         Tag fsd:layer:app. Routes re-export page libraries.
 libs/<domain>/<layer>/<slice>/
