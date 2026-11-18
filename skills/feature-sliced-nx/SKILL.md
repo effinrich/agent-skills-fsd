@@ -1,13 +1,13 @@
 ---
 name: feature-sliced-nx
-description: Feature-Sliced Design for an Nx workspace. Each slice is a React library under libs/<domain>/<layer>/<slice>, generated with fsd-slice (wraps @nx/react:library), tagged fsd:layer and fsd:domain, with pages-first placement and widgets discouraged. Use when the repo has nx.json and the task creates, moves, splits, or imports a slice, decides where code belongs, refactors an existing app onto these libraries, adds Storybook, or wires the harness. Do not use the agnostic feature-sliced-design src/ layout in an Nx workspace.
+description: Feature-Sliced Design for an Nx workspace. Each slice is a React library under libs/<domain>/<layer>/<slice>, generated with fsd-slice, tagged fsd:layer and fsd:domain, with pages-first placement and widgets discouraged. Use when the repo has nx.json and the task creates, moves, splits, or imports a slice, decides where code belongs, refactors an existing app onto these libraries, adds Storybook, or wires the harness. Do not use the agnostic feature-sliced-design src/ layout in an Nx workspace.
 ---
 
 # Feature-Sliced Design on Nx
 
-One slice is one Nx library. The app is an Nx application, not a slice. This skill ships one generator: `fsd-slice`, which wraps `@nx/react:library` and optional `@nx/react:storybook-configuration`. It does not generate apps. Create or keep the app with the workspace's normal `@nx/react:application` (or equivalent), then tag it `fsd:layer:app`. Tags and `@nx/enforce-module-boundaries` keep imports on the layer rule. A segment gate checks what tags cannot see inside one library: `ui` stays markup, `fetch` stays in `api`. The agnostic `feature-sliced-design` skill is the other path. If `nx.json` exists, this skill is the one to follow. Do not run that skill's `validate.mjs` on `libs/`.
+One slice is one Nx library. The app is an Nx application, not a slice. This skill ships one generator: `fsd-slice`, which writes the slice itself, and optional `@nx/react:storybook-configuration`. It does not generate apps. Create or keep the app with the workspace's normal `@nx/react:application` (or equivalent), then tag it `fsd:layer:app`. Tags and `@nx/enforce-module-boundaries` keep imports on the layer rule. A segment gate checks what tags cannot see inside one library: `ui` stays markup, `fetch` stays in `api`. The agnostic `feature-sliced-design` skill is the other path. If `nx.json` exists, this skill is the one to follow. Do not run that skill's `validate.mjs` on `libs/`.
 
-Methodology: [Feature-Sliced Design](https://feature-sliced.design/). Generator options match current `@nx/react:library` and `@nx/react:storybook-configuration` (`directory` is the project root; `projectNameAndRootFormat` is gone). Confirm with `nx g @nx/react:library --help` in the workspace before changing flags.
+Methodology: [Feature-Sliced Design](https://feature-sliced.design/). The slice generator writes the files itself and reads the workspace it runs in, so the slice fits the workspace's own tsconfig, eslint and test setup instead of overwriting it. The app still comes from `@nx/react:application`, because Nx should own the app.
 
 ## Scope
 
@@ -138,9 +138,19 @@ nx g @<scope>/internal-plugin:fsd-slice product-card --domain=catalog --layer=fe
 nx g @<scope>/internal-plugin:fsd-slice product-card --domain=catalog --layer=features --storybook=true
 ```
 
-The generator calls `@nx/react:library` with `directory`, `name`, `tags`, `bundler: 'none'`, `component: false`, and the workspace unit-test runner (`--unitTestRunner=jest` when the repo already uses Jest; otherwise Vitest). It does not pass a linter, so an Oxlint workspace stays on Oxlint. `bundler: 'none'` keeps the slice as source. A Vite or Rollup build is a separate choice for a library that is published, not the default for an in-repo slice.
+The generator writes the slice itself. It does not call the framework generator, because that drops the framework's own conventions into every slice (a Babel config in a Vite workspace, a per-slice `package.json`, a README that promises a test runner the workspace does not have) and rewrites the shared root config each time it runs.
 
-It writes a starter `ui` component plus empty `model` and `api`, then overwrites `src/index.ts` so the public API is the component and its props type. Delete a segment that stays empty. Full registration notes and the Storybook vs Playwright split: [REFERENCE.md](REFERENCE.md).
+What it writes:
+
+- `project.json` with the project name, `fsd:layer:<layer>`, `fsd:domain:<domain>` and empty targets, so the workspace's own Nx plugins infer the lint, typecheck and build targets from the files present.
+- `tsconfig.json` and `tsconfig.lib.json`, extending the workspace `tsconfig.base.json`. No `types` array, so the slice inherits the workspace's types instead of pinning its own.
+- `tsconfig.spec.json` only when `--unitTestRunner` names a runner the workspace already uses. The default is `none`.
+- `eslint.config.mjs` only when the workspace has a root eslint config, so the root rules reach the slice. A workspace that lints with Oxlint gets no eslint file.
+- `src/index.ts` as the public API, `src/lib/ui/<slice>.tsx`, and empty `model` and `api` segments.
+
+Outside the slice it touches exactly two root files: the root `tsconfig.json` project references, so the slice builds, and the root `tsconfig.base.json` path mapping, so other projects import it by its public path. Nothing else.
+
+It writes a starter `ui` component plus empty `model` and `api`, and sets `src/index.ts` so the public API is the component and its props type. Delete a segment that stays empty. Full registration notes and the Storybook vs Playwright split: [REFERENCE.md](REFERENCE.md).
 
 ## Storybook
 
@@ -159,7 +169,7 @@ nx test-storybook catalog-features-product-card
 
 Move code as-is. Renames and logic rewrites belong in a separate change.
 
-1. The component is not a library yet? Generate the slice, then move the file into `src/lib/ui/`. Update importers to the package name. Do not create `src/features/` or `src/pages/` in the app, and do not hand-roll `project.json`.
+1. The component is not a library yet? Generate the slice, then move the file into `src/lib/ui/`. Update importers to the package name. Do not create `src/features/` or `src/pages/` in the app, and do not hand-roll `project.json`: the generator writes it.
 2. Types a hook or a second file needs -> `src/lib/model/`.
 3. Constants -> `src/lib/config/`.
 4. Pure helpers -> `src/lib/lib/`.
@@ -225,8 +235,7 @@ Edit a rule in every copy in the same change. This skill stays the long form.
 ## What not to do
 
 - Do not create `src/features/` or `src/pages/` in an app that should be importing libraries.
-- Do not hand-roll a library folder. Use the generator, or `nx g @nx/react:library` with the same directory, name, and tags, then move the existing files in.
-- Do not add `projectNameAndRootFormat`.
+- Do not hand-roll a library folder, and do not call `nx g @nx/react:library` for a slice. The generator writes the slice in the skill's shape. Use it, then move the existing files in.
 - Do not install packages the task did not ask for. `--storybook=true` is the ask for the Storybook dependency.
 - Do not point `feature-sliced-design` `validate.mjs` at `libs/`.
 

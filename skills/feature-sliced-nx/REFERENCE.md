@@ -2,15 +2,30 @@
 
 Current Nx facts this skill relies on, and the edges the generator does not decide.
 
-## Generator options that moved
+## What the generator writes
+
+The slice generator writes the slice itself. It does not call `@nx/react:library`, because that generator brings its own conventions into every slice and rewrites the shared root config each time it runs: a Babel config in a Vite workspace, a per-slice `package.json`, a README that promises a test runner the workspace does not have, plus edits to the root `nx.json`, `.gitignore`, `eslint.config.mjs` and `package.json`.
+
+The framework generator is still the right tool for the application. `nx g @nx/react:application` owns the app, and the skill only tags it `fsd:layer:app`.
+
+The slice generator reads the workspace it runs in:
+
+- `project.json` carries the project name, the FSD tags and empty targets. The workspace's own Nx plugins infer the lint, typecheck and build targets from the files present.
+- `tsconfig.json` and `tsconfig.lib.json` extend the workspace `tsconfig.base.json` and leave `types` unset, so the slice inherits the workspace's types rather than pinning its own.
+- `eslint.config.mjs` is written only when the workspace has a root eslint config, because the slice config imports the root one for the root rules. A workspace that lints with Oxlint gets no eslint file.
+- `tsconfig.spec.json` is written only when `--unitTestRunner` names a runner the workspace already uses. The default is `none`.
+
+Outside the slice it touches exactly two root files: `tsconfig.json`, for the project reference, and `tsconfig.base.json`, for the path mapping that lets other projects import `@<scope>/<project>`.
+
+`storybookConfigurationGenerator` requires `project`. `generateStories`, `interactionTests`, and `configureStaticServe` all default to `true`. The generator passes them explicitly. Storybook v10 is what `@nx/react:storybook-configuration` sets up.
+
+## Framework generator options, for the app
 
 `@nx/react:library` requires `directory` (argv index 0). That directory is the project root, for example `libs/catalog/features/product-card`. Pass `name` when the project name is not the last folder (`catalog-features-product-card`). `projectNameAndRootFormat` is not in the schema; passing it fails on current Nx.
 
-`bundler` defaults to `none`. `component` defaults to `true` and would drop an extra component in `src/lib/`, so the slice generator sets `component: false` and deletes a leftover `${fileName}.tsx` if one appears. `linter` is omitted on purpose: the schema says it defaults to the linter the workspace already uses (`eslint` or `oxlint`).
+`bundler` defaults to `none`. `component` defaults to `true` and would drop an extra component in `src/lib/`. `linter` is omitted on purpose: the schema says it defaults to the linter the workspace already uses (`eslint` or `oxlint`).
 
-`libraryGenerator` may return a callback that installs packages after the tree is written. The slice generator collects that callback, and the one from `storybookConfigurationGenerator`, and runs them after `formatFiles`. Dropping the return value skips those installs.
-
-`storybookConfigurationGenerator` requires `project`. `generateStories`, `interactionTests`, and `configureStaticServe` all default to `true`. The generator passes them explicitly. Storybook v10 is what `@nx/react:storybook-configuration` sets up.
+`libraryGenerator` may return a callback that installs packages after the tree is written. Dropping the return value skips those installs.
 
 Before editing flags in a repo, run `nx g @nx/react:library --help` and `nx g @nx/react:storybook-configuration --help`. The installed schema wins over this file.
 
@@ -20,9 +35,9 @@ When a developer runs `fsd-slice`, the script:
 
 1. Maps the slice to `libs/<domain>/<layer>/<name>` and the project name `<domain>-<layer>-<name>`.
 2. Injects `fsd:layer:<layer>` and `fsd:domain:<domain>` on the new library so module boundaries stay enforceable.
-3. Delegates core scaffolding to the native Nx React library generator (`bundler: 'none'`).
-4. Force-scaffolds the FSD segments under `src/lib/` (`ui` with a starter component, empty `model` and `api`).
-5. Writes a strict public API in `src/index.ts` (component + props only; stories never exported).
+3. Writes the slice in the skill's shape: `project.json`, the tsconfigs, the eslint config when the workspace has one, and the FSD segments under `src/lib/` (`ui` with a starter component, empty `model` and `api`).
+4. Writes a strict public API in `src/index.ts` (component + props only; stories never exported).
+5. Adds the slice to the root project references and the root path mapping, so it builds and other projects import it by its public path.
 6. Optionally adds a per-slice Storybook target when `--storybook=true`.
 
 Copy `generators/fsd-slice/generator.ts` and `schema.json` from this skill. Do not paste older drafts that use `@nx/js`, `projectNameAndRootFormat`, empty `ui/.gitkeep` only, or `export * from './lib/model'` as the public API.

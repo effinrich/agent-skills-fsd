@@ -41,9 +41,9 @@
     },
     "unitTestRunner": {
       "type": "string",
-      "description": "Match the runner this workspace already uses.",
+      "description": "The runner this workspace already uses. The slice gets a tsconfig.spec.json for it. Leave it on none when the workspace has no test runner.",
       "enum": ["vitest", "jest", "none"],
-      "default": "vitest"
+      "default": "none"
     }
   },
   "required": ["name", "domain", "layer"]
