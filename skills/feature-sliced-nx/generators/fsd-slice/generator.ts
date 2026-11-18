@@ -1,5 +1,6 @@
 import { formatFiles, names, readNxJson, updateJson, writeJson, type GeneratorCallback, type Tree } from '@nx/devkit'
 import { storybookConfigurationGenerator } from '@nx/react'
+import { domainSlices, writeAgentsDoc } from '../fsd-agents/agents-doc'
 
 interface FsdSliceGeneratorSchema {
   name: string
@@ -132,6 +133,18 @@ export default async function (tree: Tree, options: FsdSliceGeneratorSchema) {
   )
 
   writePublicApi(tree, srcPath, className, fileName)
+
+  // Every project carries its own AGENTS.md, scoped to its domain and layer.
+  writeAgentsDoc(tree, {
+    projectName,
+    projectType: 'library',
+    projectRoot: projectDirectory,
+    layer: options.layer,
+    domain,
+    tags,
+    publicApi: [{ name: className }, { name: className + 'Props', isType: true }],
+    domainSlices: domainSlices(tree, domain),
+  })
 
   // The slice joins the root project references, so the workspace typecheck builds it.
   if (tree.exists('tsconfig.json')) {

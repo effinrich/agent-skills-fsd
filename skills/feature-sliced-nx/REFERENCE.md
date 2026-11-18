@@ -54,6 +54,7 @@ nx g @nx/plugin:plugin internal-plugin --directory=tools/internal-plugin
 
 ```
 nx g @nx/plugin:generator fsd-slice --project=internal-plugin
+nx g @nx/plugin:generator fsd-agents --project=internal-plugin
 ```
 
 Or, if the plugin path is already known:
@@ -62,7 +63,7 @@ Or, if the plugin path is already known:
 nx g @nx/plugin:generator tools/internal-plugin/src/generators/fsd-slice --name=fsd-slice
 ```
 
-3. Overwrite `tools/internal-plugin/src/generators/fsd-slice/generator.ts` and `schema.json` with the copies in this skill's `generators/fsd-slice/` folder. Point `generators.json` at them:
+3. Overwrite `tools/internal-plugin/src/generators/fsd-slice/generator.ts` and `schema.json` with the copies in this skill's `generators/fsd-slice/` folder. Copy this skill's `generators/fsd-agents/` folder next to it. Point `generators.json` at them:
 
 ```json
 {
@@ -71,6 +72,11 @@ nx g @nx/plugin:generator tools/internal-plugin/src/generators/fsd-slice --name=
       "factory": "./src/generators/fsd-slice/generator",
       "schema": "./src/generators/fsd-slice/schema.json",
       "description": "Generate an FSD slice library"
+    },
+    "fsd-agents": {
+      "factory": "./src/generators/fsd-agents/generator",
+      "schema": "./src/generators/fsd-agents/schema.json",
+      "description": "Write the AGENTS.md for an FSD project, scoped to its domain"
     }
   }
 }
@@ -84,6 +90,18 @@ nx g @<scope>/internal-plugin:fsd-slice product-card --domain=catalog --layer=fe
 ```
 
 The `nx g` package name is the `name` in that plugin's `package.json`, not a guessed `@my-workspace/internal-plugin`. Confirm with the plugin's `package.json` before documenting the command for a repo.
+
+### The AGENTS.md generator
+
+`fsd-agents` writes one `AGENTS.md` per project, scoped to that project's domain and layer:
+
+```
+nx g @<scope>/internal-plugin:fsd-agents --project=<nx project name>
+```
+
+It reads `fsd:layer:*` and `fsd:domain:*` from the project tags, lists the domain's slices, states what the layer may import, and lists the public API as it is in `src/index.ts`. A project with no `fsd:layer` tag is refused, because the tags are what the document is derived from. `--force` overwrites an existing file.
+
+`fsd-slice` writes the same file for the slice it creates, so a new slice arrives with its document. The app needs its own run, because the app comes from `@nx/react:application` and the generator does not make apps.
 
 ### Storybook and Playwright
 

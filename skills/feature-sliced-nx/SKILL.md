@@ -1,17 +1,17 @@
 ---
 name: feature-sliced-nx
-description: Feature-Sliced Design for an Nx workspace. Each slice is a React library under libs/<domain>/<layer>/<slice>, generated with fsd-slice, tagged fsd:layer and fsd:domain, with pages-first placement and widgets discouraged. Use when the repo has nx.json and the task creates, moves, splits, or imports a slice, decides where code belongs, refactors an existing app onto these libraries, adds Storybook, or wires the harness. Do not use the agnostic feature-sliced-design src/ layout in an Nx workspace.
+description: Feature-Sliced Design for an Nx workspace. Each slice is a React library under libs/<domain>/<layer>/<slice>, generated with fsd-slice, each project carrying a domain scoped AGENTS.md from fsd-agents, tagged fsd:layer and fsd:domain, with pages-first placement and widgets discouraged. Use when the repo has nx.json and the task creates, moves, splits, or imports a slice, decides where code belongs, refactors an existing app onto these libraries, adds Storybook, or wires the harness. Do not use the agnostic feature-sliced-design src/ layout in an Nx workspace.
 ---
 
 # Feature-Sliced Design on Nx
 
-One slice is one Nx library. The app is an Nx application, not a slice. This skill ships one generator: `fsd-slice`, which writes the slice itself, and optional `@nx/react:storybook-configuration`. It does not generate apps. Create or keep the app with the workspace's normal `@nx/react:application` (or equivalent), then tag it `fsd:layer:app`. Tags and `@nx/enforce-module-boundaries` keep imports on the layer rule. A segment gate checks what tags cannot see inside one library: `ui` stays markup, `fetch` stays in `api`. The agnostic `feature-sliced-design` skill is the other path. If `nx.json` exists, this skill is the one to follow. Do not run that skill's `validate.mjs` on `libs/`.
+One slice is one Nx library. The app is an Nx application, not a slice. This skill ships two generators: `fsd-slice`, which writes the slice itself, and `fsd-agents`, which writes that project's AGENTS.md, plus optional `@nx/react:storybook-configuration`. It does not generate apps. Create or keep the app with the workspace's normal `@nx/react:application` (or equivalent), then tag it `fsd:layer:app`. Tags and `@nx/enforce-module-boundaries` keep imports on the layer rule. A segment gate checks what tags cannot see inside one library: `ui` stays markup, `fetch` stays in `api`. The agnostic `feature-sliced-design` skill is the other path. If `nx.json` exists, this skill is the one to follow. Do not run that skill's `validate.mjs` on `libs/`.
 
 Methodology: [Feature-Sliced Design](https://feature-sliced.design/). The slice generator writes the files itself and reads the workspace it runs in, so the slice fits the workspace's own tsconfig, eslint and test setup instead of overwriting it. The app still comes from `@nx/react:application`, because Nx should own the app.
 
 ## Scope
 
-This skill owns the Feature-Sliced pattern, the slice generator, and the harness that enforces them. It does not own workspace tooling.
+This skill owns the Feature-Sliced pattern, the slice generator, the per-project AGENTS.md generator, and the harness that enforces them. It does not own workspace tooling.
 
 - It does not create an Nx workspace. Use `create-nx-workspace` first, or `nx init` for a repo that already has one, then install this skill.
 - It does not convert a non-Nx app into an Nx workspace. That is a one-time migration done with Nx's own commands. This skill governs the result.
@@ -129,9 +129,10 @@ The local generator calculates the nested directory, scaffolds `ui` / `model` / 
 ```
 nx g @nx/plugin:plugin internal-plugin --directory=tools/internal-plugin
 nx g @nx/plugin:generator fsd-slice --project=internal-plugin
+nx g @nx/plugin:generator fsd-agents --project=internal-plugin
 ```
 
-Overwrite `tools/internal-plugin/src/generators/fsd-slice/generator.ts` and `schema.json` with this skill's `generators/fsd-slice/` copies (not older `@nx/js` drafts). Then:
+Overwrite `tools/internal-plugin/src/generators/fsd-slice/generator.ts` and `schema.json` with this skill's `generators/fsd-slice/` copies (not older `@nx/js` drafts). Copy `generators/fsd-agents/` next to it and register it in the plugin's `generators.json`. Then:
 
 ```
 nx g @<scope>/internal-plugin:fsd-slice product-card --domain=catalog --layer=features
@@ -147,10 +148,31 @@ What it writes:
 - `tsconfig.spec.json` only when `--unitTestRunner` names a runner the workspace already uses. The default is `none`.
 - `eslint.config.mjs` only when the workspace has a root eslint config, so the root rules reach the slice. A workspace that lints with Oxlint gets no eslint file.
 - `src/index.ts` as the public API, `src/lib/ui/<slice>.tsx`, and empty `model` and `api` segments.
+- `AGENTS.md` for that project, scoped to its domain and layer.
 
 Outside the slice it touches exactly two root files: the root `tsconfig.json` project references, so the slice builds, and the root `tsconfig.base.json` path mapping, so other projects import it by its public path. Nothing else.
 
 It writes a starter `ui` component plus empty `model` and `api`, and sets `src/index.ts` so the public API is the component and its props type. Delete a segment that stays empty. Full registration notes and the Storybook vs Playwright split: [REFERENCE.md](REFERENCE.md).
+
+## Per-project AGENTS.md
+
+Every project carries an `AGENTS.md` that narrows the workspace rules to that one domain and layer. Nx has no generator for it, so this skill ships one:
+
+```
+nx g @<scope>/internal-plugin:fsd-agents --project=<nx project name>
+```
+
+It reads the project tags, so the tags stay the source of truth: `fsd:layer:<layer>` gives the layer, `fsd:domain:<domain>` gives the domain. The document holds the domain's slice list, what the layer may import, what belongs in the project, and the public API as it is in `src/index.ts`. It refuses to overwrite an existing file unless you pass `--force`.
+
+Run it once per project, the app included:
+
+```
+nx g @<scope>/internal-plugin:fsd-agents --project=starter
+```
+
+The app carries no domain tag, so its document says it is not part of a domain instead of inventing one.
+
+Do not hand-write these files from memory. The generator reads the tags and the public API, so a hand-written document drifts from the code. Add project notes on top of the generated file only when they are facts the generator cannot know.
 
 ## Storybook
 
@@ -236,6 +258,7 @@ Edit a rule in every copy in the same change. This skill stays the long form.
 
 - Do not create `src/features/` or `src/pages/` in an app that should be importing libraries.
 - Do not hand-roll a library folder, and do not call `nx g @nx/react:library` for a slice. The generator writes the slice in the skill's shape. Use it, then move the existing files in.
+- Do not hand-write a project's `AGENTS.md` from memory. Generate it with `fsd-agents` so it matches the tags and the public API.
 - Do not install packages the task did not ask for. `--storybook=true` is the ask for the Storybook dependency.
 - Do not point `feature-sliced-design` `validate.mjs` at `libs/`.
 

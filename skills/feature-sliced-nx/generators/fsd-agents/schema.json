@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "FsdAgents",
+  "title": "Write the AGENTS.md for an FSD project",
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "string",
+      "description": "Nx project name of the library or application (studio-features-editor-panel, starter).",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "Which Nx project gets the AGENTS.md?"
+    },
+    "force": {
+      "type": "boolean",
+      "description": "Overwrite an existing AGENTS.md.",
+      "default": false
+    }
+  },
+  "required": [
+    "project"
+  ]
+}
