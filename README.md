@@ -1,4 +1,4 @@
-# agent-skills-fsd
+# feature-sliced-design-skill
 
 Portable Feature-Sliced Design skill, plus the project files that make an agent stay on that path: a gate, a stop hook, and a shell guard.
 
@@ -9,13 +9,13 @@ This is the sliced sibling of [agent-skills](https://github.com/effinrich/agent-
 Agnostic, one `src/` tree:
 
 ```
-npx skills add effinrich/agent-skills-fsd --skill feature-sliced-design -g -a cursor -a claude-code -a codex -a windsurf -y
+npx skills add effinrich/feature-sliced-design-skill --skill feature-sliced-design -g -a cursor -a claude-code -a codex -a windsurf -y
 ```
 
 Nx workspace, one library per slice:
 
 ```
-npx skills add effinrich/agent-skills-fsd --skill feature-sliced-nx -g -a cursor -a claude-code -a codex -a windsurf -y
+npx skills add effinrich/feature-sliced-design-skill --skill feature-sliced-nx -g -a cursor -a claude-code -a codex -a windsurf -y
 ```
 
 Those install to `~/.agents/skills/feature-sliced-design/` and `~/.agents/skills/feature-sliced-nx/`. Use the agnostic skill when the repo has no `nx.json`. Use the Nx skill when it does.
